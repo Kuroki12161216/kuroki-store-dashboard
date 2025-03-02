@@ -1,0 +1,14 @@
+.card {
+  cursor: pointer;
+}
+/* 「もっと読む」で展開前はテキストをトリミングするならCSSでも可(行数制限など)
+ただし今回はJSで substring しているので、必須ではありません。 */
+.sort-header {
+  cursor: pointer;
+  user-select: none; /* ドラッグ選択できないように */
+}
+
+.toggle-btn {
+  margin-left: 6px;
+  border-radius: 20px;
+}
