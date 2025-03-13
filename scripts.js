@@ -120,54 +120,72 @@ window.fetchAndDisplayDiagnostics = async function () {
   // カードをクリア
   diagnosticsCardContainer.innerHTML = "";
 
-  // 取得したデータをカードとして表示
-  data.forEach((row) => {
-    const colDiv = document.createElement("div");
-    colDiv.className = "col";
+// 取得したデータをカードとして表示
+data.forEach((row) => {
+  const colDiv = document.createElement("div");
+  colDiv.className = "col";
 
-    const cardDiv = document.createElement("div");
-    cardDiv.className = "card h-100 shadow-sm";
-    cardDiv.onclick = () => openDiagnosticModal(row);
+  const cardDiv = document.createElement("div");
+  cardDiv.className = "card h-100 shadow-sm";
+  cardDiv.onclick = () => openDiagnosticModal(row);
 
-    const cardBody = document.createElement("div");
-    cardBody.className = "card-body";
+  const cardBody = document.createElement("div");
+  cardBody.className = "card-body";
 
-    // タイトル(項目)
-    const cardTitle = document.createElement("h5");
-    cardTitle.className = "card-title";
-    cardTitle.textContent = row.項目 || "(項目なし)";
+  // タイトル(項目)を作成
+  const cardTitle = document.createElement("h5");
+  cardTitle.className = "card-title";
+  // 項目名をセット
+  cardTitle.textContent = row.項目 || "(項目なし)";
 
-    // サブタイトル(店舗名, 月)
-    const cardSubtitle = document.createElement("h6");
-    cardSubtitle.className = "card-subtitle mb-2 text-muted";
-    cardSubtitle.textContent = `店舗: ${row.店舗名} / 月: ${row.月}`;
+  // 差異を示す「〇」or「×」用の <span> を追加
+  const diffSpan = document.createElement("span");
+  // row.差異 が "〇" かどうか判定
+  if (row.差異 === "〇") {
+    diffSpan.style.color = "red";
+    diffSpan.style.fontWeight = "bold";
+    diffSpan.textContent = " 〇"; // 前に半角スペースで項目との間をあける
+  } else {
+    diffSpan.style.color = "black";
+    diffSpan.style.fontWeight = "bold";
+    diffSpan.textContent = " ×";
+  }
+  // タイトル要素の後ろに差異を追加
+  cardTitle.appendChild(diffSpan);
 
-    // 差異など簡易表示
-    const diffP = document.createElement("p");
-    diffP.className = "card-text";
-    diffP.textContent = `目標: ${row.目標数値}, 実績: ${row.実績}, 差異: ${row.差異}`;
+  // サブタイトル(店舗名, 月)
+  const cardSubtitle = document.createElement("h6");
+  cardSubtitle.className = "card-subtitle mb-2 text-muted";
+  cardSubtitle.textContent = `店舗: ${row.店舗名} / 月: ${row.月}`;
 
-    // 仮説（「もっと読む」リンク付き）
-    const hypoP = createTruncatedParagraph("仮説", row.仮説 || "", 50);
-    // ネクストアクション（「もっと読む」リンク付き）
-    const actionP = createTruncatedParagraph(
-      "ネクスト",
-      row.ネクストアクション || "",
-      50
-    );
+  // 目標・実績など簡易表示
+  const diffP = document.createElement("p");
+  diffP.className = "card-text";
+  // 差異はタイトルとなりに移動したため、ここでは目標と実績のみ表示
+  diffP.textContent = `目標: ${row.目標数値}, 実績: ${row.実績}`;
 
-    // カード本文を組み立て
-    cardBody.appendChild(cardTitle);
-    cardBody.appendChild(cardSubtitle);
-    cardBody.appendChild(diffP);
-    cardBody.appendChild(hypoP);
-    cardBody.appendChild(actionP);
+  // 仮説（「もっと読む」リンク付き）
+  const hypoP = createTruncatedParagraph("仮説", row.仮説 || "", 50);
 
-    cardDiv.appendChild(cardBody);
-    colDiv.appendChild(cardDiv);
-    diagnosticsCardContainer.appendChild(colDiv);
-  });
-};
+  // ネクストアクション（「もっと読む」リンク付き）
+  const actionP = createTruncatedParagraph(
+    "ネクスト",
+    row.ネクストアクション || "",
+    50
+  );
+
+  // カード本文を組み立て
+  cardBody.appendChild(cardTitle);
+  cardBody.appendChild(cardSubtitle);
+  cardBody.appendChild(diffP);
+  cardBody.appendChild(hypoP);
+  cardBody.appendChild(actionP);
+
+  cardDiv.appendChild(cardBody);
+  colDiv.appendChild(cardDiv);
+  diagnosticsCardContainer.appendChild(colDiv);
+});
+}
 
 // 「もっと読む」対応の補助関数
 // カード上の「仮説」「ネクスト」にもっと読む機能を付ける関数
