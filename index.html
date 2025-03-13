@@ -76,10 +76,25 @@
               <!-- JSで店舗一覧を追加 -->
             </select>
           </div>
+          <!-- ▼▼▼ 項目を選択式に変更 ▼▼▼ -->
           <div class="mb-2">
             <label for="taskAddItemInput" class="form-label">項目</label>
-            <input type="text" class="form-control w-auto d-inline-block" id="taskAddItemInput" placeholder="例: 売上改善">
+            <select id="taskAddItemInput" class="form-select w-auto d-inline-block">
+              <option value="">項目を選択</option>
+              <option value="売上">売上</option>
+              <option value="単価">単価</option>
+              <option value="人時売上高">人時売上高</option>
+              <option value="F">F</option>
+              <option value="D">D</option>
+              <option value="人件費">人件費</option>
+              <option value="臨店シート">臨店シート</option>
+              <option value="CS調査">CS調査</option>
+              <option value="面談進捗">面談進捗</option>
+              <option value="ESアンケート">ESアンケート</option>
+              <option value="PAリファラル採用">PAリファラル採用</option>
+            </select>
           </div>
+          <!-- ▲▲▲ 項目を選択式に変更 ▲▲▲ -->
           <div class="mb-2">
             <label for="taskAddDetailInput" class="form-label">タスク</label>
             <input type="text" class="form-control w-auto d-inline-block" id="taskAddDetailInput" placeholder="例: 棚割り変更">
@@ -146,10 +161,26 @@
 
             <!-- タスク送信フォーム -->
             <h5 class="mb-3">タスク送信</h5>
+            <!-- ▼▼▼ 項目を選択式に変更 ▼▼▼ -->
             <div class="mb-2">
               <label for="modalTaskItem" class="form-label">項目</label>
-              <input type="text" class="form-control" id="modalTaskItem" placeholder="例：売場改善">
+              <select id="modalTaskItem" class="form-select">
+                <option value="">項目を選択</option>
+                <option value="売上">売上</option>
+                <option value="単価">単価</option>
+                <option value="人時売上高">人時売上高</option>
+                <option value="F">F</option>
+                <option value="D">D</option>
+                <option value="人件費">人件費</option>
+                <option value="臨店シート">臨店シート</option>
+                <option value="CS調査">CS調査</option>
+                <option value="面談進捗">面談進捗</option>
+                <option value="ESアンケート">ESアンケート</option>
+                <option value="PAリファラル採用">PAリファラル採用</option>
+              </select>
             </div>
+            <!-- ▲▲▲ 項目を選択式に変更 ▲▲▲ -->
+
             <div class="mb-2">
               <label for="modalTaskDetail" class="form-label">タスク</label>
               <input type="text" class="form-control" id="modalTaskDetail" placeholder="例：棚割り見直し">
