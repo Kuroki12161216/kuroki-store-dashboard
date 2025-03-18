@@ -18,6 +18,7 @@ const diagnosticsCardContainer = document.getElementById(
 
 // タスク一覧
 const storeSelectTask = document.getElementById("storeSelectTask");
+const monthSelectTask = document.getElementById("monthSelectTask");
 const tasksTableBody = document.querySelector("#tasksTable tbody");
 
 // タスク一覧→追加フォーム
@@ -64,6 +65,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
   await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
+  await initMonthDropdown();
 });
 
 // 店舗一覧をプルダウンに反映
@@ -99,92 +101,146 @@ async function initStoreDropdowns() {
   });
 }
 
-// 店舗診断表の取得・表示(カード形式) + ソート(例: idの昇順)
+// 月選択プルダウンの初期化
+async function initMonthDropdown() {
+  // 「店舗診断表」テーブルから distinct な対象月一覧を取得すると仮定
+  const { data, error } = await supabase.from("店舗診断表").select("月");
+  if (error) {
+    console.error("月一覧取得エラー:", error);
+    return;
+  }
+console.log(data)
+  // 月選択プルダウンの要素を取得
+  const monthSelect = document.getElementById("monthSelect");
+  if (!monthSelect) {
+    console.error("monthSelect 要素が見つかりません。");
+    return;
+  }
+
+  // 重複を排除した月一覧を作成
+  const distinctMonths = [...new Set(data.map((item) => item.月))];
+
+  // プルダウンに選択肢を追加
+  // 例: 「2025年3月」などの形式で格納されていると想定
+  distinctMonths.forEach((month) => {
+    const opt = document.createElement("option");
+    opt.value = month;
+    opt.textContent = month; // 画面に表示するテキスト
+    monthSelect.appendChild(opt);
+    // monthSelectTask.appendChild(opt);
+  });
+  distinctMonths.forEach((month) => {
+    const opt = document.createElement("option");
+    opt.value = month;
+    opt.textContent = month; // 画面に表示するテキスト
+    // monthSelect.appendChild(opt);
+    monthSelectTask.appendChild(opt);
+  });
+}
+
+// 月が変更されたときに呼び出される関数(例)
+function fetchAndDisplayDiagnosticsByMonth() {
+  const monthSelect = document.getElementById("monthSelect");
+  const selectedMonth = monthSelect.value;
+
+  // 取得した「選択月」を元にテーブルをフィルタする処理などを行う
+  console.log("選択された月:", selectedMonth);
+
+  // 実際にデータ取得して画面へ表示するための処理はここで書く
+  // 例: supabase.from("店舗診断表").select("*").eq("対象月", selectedMonth)...
+}
+
+
+// ▼ 店舗・月の両方で診断表をフィルタしてカード表示する関数 (マージ版)
 window.fetchAndDisplayDiagnostics = async function () {
+  // 選択された店舗と月を取得
   const selectedStore = storeSelect.value;
-  // 例えばID順にソート
+  const selectedMonth = monthSelect.value;
+
+  // クエリの初期状態 (すべての行を id の昇順で取得)
   let query = supabase
     .from("店舗診断表")
     .select("*")
     .order("id", { ascending: true });
 
+  // 店舗が "all" でなければ店舗名で絞り込み
   if (selectedStore !== "all") {
     query = query.eq("店舗名", selectedStore);
   }
+
+  // 月が "all" でなければ月で絞り込み
+  if (selectedMonth !== "all") {
+    query = query.eq("月", selectedMonth);
+  }
+
+  // データ取得
   const { data, error } = await query;
   if (error) {
     console.error("店舗診断表取得エラー:", error);
     return;
   }
 
-  // カードをクリア
+  // 表示領域をクリア
   diagnosticsCardContainer.innerHTML = "";
 
-// 取得したデータをカードとして表示
-data.forEach((row) => {
-  const colDiv = document.createElement("div");
-  colDiv.className = "col";
+  // 取得したデータを1件ずつカードとして生成・追加
+  data.forEach((row) => {
+    const colDiv = document.createElement("div");
+    colDiv.className = "col";
 
-  const cardDiv = document.createElement("div");
-  cardDiv.className = "card h-100 shadow-sm";
-  cardDiv.onclick = () => openDiagnosticModal(row);
+    const cardDiv = document.createElement("div");
+    cardDiv.className = "card h-100 shadow-sm";
+    // カードクリック時の詳細モーダルを出すなどの場合
+    cardDiv.onclick = () => openDiagnosticModal(row);
 
-  const cardBody = document.createElement("div");
-  cardBody.className = "card-body";
+    const cardBody = document.createElement("div");
+    cardBody.className = "card-body";
 
-  // タイトル(項目)を作成
-  const cardTitle = document.createElement("h5");
-  cardTitle.className = "card-title";
-  // 項目名をセット
-  cardTitle.textContent = row.項目 || "(項目なし)";
+    // カードタイトル (項目)
+    const cardTitle = document.createElement("h5");
+    cardTitle.className = "card-title";
+    cardTitle.textContent = row.項目 || "(項目なし)";
 
-  // 差異を示す「〇」or「×」用の <span> を追加
-  const diffSpan = document.createElement("span");
-  // row.差異 が "〇" かどうか判定
-  if (row.差異 === "〇") {
-    diffSpan.style.color = "red";
-    diffSpan.style.fontWeight = "bold";
-    diffSpan.textContent = " 〇"; // 前に半角スペースで項目との間をあける
-  } else {
-    diffSpan.style.color = "black";
-    diffSpan.style.fontWeight = "bold";
-    diffSpan.textContent = " ×";
-  }
-  // タイトル要素の後ろに差異を追加
-  cardTitle.appendChild(diffSpan);
+    // 差異 (〇 or ×) の表示
+    const diffSpan = document.createElement("span");
+    if (row.差異 === "〇") {
+      diffSpan.style.color = "red";
+      diffSpan.style.fontWeight = "bold";
+      diffSpan.textContent = " 〇"; // 前に半角スペースで項目名と区別
+    } else {
+      diffSpan.style.color = "black";
+      diffSpan.style.fontWeight = "bold";
+      diffSpan.textContent = " ×";
+    }
+    cardTitle.appendChild(diffSpan);
 
-  // サブタイトル(店舗名, 月)
-  const cardSubtitle = document.createElement("h6");
-  cardSubtitle.className = "card-subtitle mb-2 text-muted";
-  cardSubtitle.textContent = `店舗: ${row.店舗名} / 月: ${row.月}`;
+    // サブタイトル（店舗名 / 月）
+    const cardSubtitle = document.createElement("h6");
+    cardSubtitle.className = "card-subtitle mb-2 text-muted";
+    cardSubtitle.textContent = `店舗: ${row.店舗名} / 月: ${row.月}`;
 
-  // 目標・実績など簡易表示
-  const diffP = document.createElement("p");
-  diffP.className = "card-text";
-  // 差異はタイトルとなりに移動したため、ここでは目標と実績のみ表示
-  diffP.textContent = `目標: ${row.目標数値}, 実績: ${row.実績}`;
+    // 目標と実績の簡易表示
+    const diffP = document.createElement("p");
+    diffP.className = "card-text";
+    diffP.textContent = `目標: ${row.目標数値}, 実績: ${row.実績}`;
 
-  // 仮説（「もっと読む」リンク付き）
-  const hypoP = createTruncatedParagraph("仮説", row.仮説 || "", 50);
+    // 仮説（「もっと読む」リンク付き）
+    const hypoP = createTruncatedParagraph("仮説", row.仮説 || "", 50);
 
-  // ネクストアクション（「もっと読む」リンク付き）
-  const actionP = createTruncatedParagraph(
-    "ネクスト",
-    row.ネクストアクション || "",
-    50
-  );
+    // ネクストアクション（「もっと読む」リンク付き）
+    const actionP = createTruncatedParagraph("ネクスト", row.ネクストアクション || "", 50);
 
-  // カード本文を組み立て
-  cardBody.appendChild(cardTitle);
-  cardBody.appendChild(cardSubtitle);
-  cardBody.appendChild(diffP);
-  cardBody.appendChild(hypoP);
-  cardBody.appendChild(actionP);
+    // カード本文に要素を追加
+    cardBody.appendChild(cardTitle);
+    cardBody.appendChild(cardSubtitle);
+    cardBody.appendChild(diffP);
+    cardBody.appendChild(hypoP);
+    cardBody.appendChild(actionP);
 
-  cardDiv.appendChild(cardBody);
-  colDiv.appendChild(cardDiv);
-  diagnosticsCardContainer.appendChild(colDiv);
-});
+    cardDiv.appendChild(cardBody);
+    colDiv.appendChild(cardDiv);
+    diagnosticsCardContainer.appendChild(colDiv);
+  });
 }
 
 // 「もっと読む」対応の補助関数

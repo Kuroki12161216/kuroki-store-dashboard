@@ -47,6 +47,14 @@
           </select>
         </div>
 
+       <!-- 月選択プルダウン -->
+        <div class="mb-3">
+          <label for="monthSelect" class="form-label">月選択:</label>
+          <select id="monthSelect" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayDiagnostics()">
+            <!-- JSで月一覧を追加 -->
+          </select>
+        </div>
+
         <!-- カード一覧を表示するコンテナ -->
         <div id="diagnosticsCardContainer" class="row row-cols-1 row-cols-md-3 g-4">
           <!-- JSでカードを追加 -->
@@ -63,6 +71,14 @@
           <select id="storeSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayTasks()">
             <!-- <option value="all">全て</option> -->
             <!-- ここにJSで店舗一覧を追加 -->
+          </select>
+        </div>
+
+         <!-- 月選択プルダウン -->
+         <div class="mb-3">
+          <label for="monthSelectTask" class="form-label">月選択:</label>
+          <select id="monthSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayDiagnostics()">
+            <!-- JSで月一覧を追加 -->
           </select>
         </div>
 
