@@ -214,10 +214,10 @@ window.fetchAndDisplayDiagnostics = async function () {
     }
     cardTitle.appendChild(diffSpan);
 
-    // サブタイトル（店舗名 / 月）
-    const cardSubtitle = document.createElement("h6");
-    cardSubtitle.className = "card-subtitle mb-2 text-muted";
-    cardSubtitle.textContent = `店舗: ${row.店舗名} / 月: ${row.月}`;
+    // // サブタイトル（店舗名 / 月）
+    // const cardSubtitle = document.createElement("h6");
+    // cardSubtitle.className = "card-subtitle mb-2 text-muted";
+    // cardSubtitle.textContent = `店舗: ${row.店舗名} / 月: ${row.月}`;
 
     // 目標と実績の簡易表示
     const diffP = document.createElement("p");
@@ -232,7 +232,7 @@ window.fetchAndDisplayDiagnostics = async function () {
 
     // カード本文に要素を追加
     cardBody.appendChild(cardTitle);
-    cardBody.appendChild(cardSubtitle);
+    // cardBody.appendChild(cardSubtitle);
     cardBody.appendChild(diffP);
     cardBody.appendChild(hypoP);
     cardBody.appendChild(actionP);
