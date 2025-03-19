@@ -12,3 +12,12 @@
   margin-left: 6px;
   border-radius: 20px;
 }
+
+/* sticky要素のサンプルスタイル */
+.sticky-controls {
+  position: sticky;
+  top: 0px;      /* ナビバー高さ分(または適宜調整) */
+  z-index: 999;   /* 最前面に出すために大きめに設定 */
+  background-color: #fff;
+  padding: 1rem;  /* 内側の余白 */
+}
