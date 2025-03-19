@@ -39,9 +39,9 @@
   <!-- メインコンテンツ -->
   <div class="container mt-3">
     <!-- ▼ stickyにしたいプルダウン群をラップ ▼ -->
-    <div class="sticky-controls">
-      <!-- 店舗診断表画面 -->
-      <section id="diagnosticSection" style="display:block;">
+    <!-- 店舗診断表画面 -->
+    <section id="diagnosticSection" style="display:block;">
+      <div class="sticky-controls">
         <h1 class="mb-3">店舗診断表</h1>
         <!-- 店舗選択プルダウン -->
         <div class="mb-3 d-inline-block me-3">
@@ -59,38 +59,34 @@
             <!-- JSで月一覧を追加 -->
           </select>
         </div>
-    </div>
-    <!-- ▲ stickyにしたいプルダウン群をラップ ▲ -->
-
-    <!-- カード一覧を表示するコンテナ -->
-    <div id="diagnosticsCardContainer" class="row row-cols-1 row-cols-md-3 g-4 mt-3">
-      <!-- JSでカードを追加 -->
-    </div>
+      </div>
+      <!-- カード一覧を表示するコンテナ -->
+      <div id="diagnosticsCardContainer" class="row row-cols-1 row-cols-md-3 g-4 mt-3">
+        <!-- JSでカードを追加 -->
+      </div>
     </section>
+    <!-- ▲ stickyにしたいプルダウン群をラップ ▲ -->
 
     <!-- タスク一覧画面 -->
     <section id="taskSection" style="display:none;">
       <h1 class="mb-3">タスク一覧</h1>
 
       <!-- ▼ stickyにしたいプルダウン群をラップ ▼ -->
-      <div class="sticky-controls">
-        <!-- 店舗選択プルダウン -->
-        <div class="mb-3 d-inline-block me-3">
-          <label for="storeSelectTask" class="form-label">店舗選択:</label>
-          <select id="storeSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayTasks()">
-            <!-- <option value="all">全て</option> -->
-            <!-- ここにJSで店舗一覧を追加 -->
-          </select>
-        </div>
+      <!-- 店舗選択プルダウン -->
+      <div class="mb-3 d-inline-block me-3">
+        <label for="storeSelectTask" class="form-label">店舗選択:</label>
+        <select id="storeSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayTasks()">
+          <!-- <option value="all">全て</option> -->
+          <!-- ここにJSで店舗一覧を追加 -->
+        </select>
+      </div>
 
-        <!-- 月選択プルダウン -->
-        <div class="mb-3 d-inline-block">
-          <label for="monthSelectTask" class="form-label">月選択:</label>
-          <select id="monthSelectTask" class="form-select w-auto d-inline-block"
-            onchange="fetchAndDisplayDiagnostics()">
-            <!-- JSで月一覧を追加 -->
-          </select>
-        </div>
+      <!-- 月選択プルダウン -->
+      <div class="mb-3 d-inline-block">
+        <label for="monthSelectTask" class="form-label">月選択:</label>
+        <select id="monthSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayDiagnostics()">
+          <!-- JSで月一覧を追加 -->
+        </select>
       </div>
       <!-- ▲ stickyにしたいプルダウン群をラップ ▲ -->
 
