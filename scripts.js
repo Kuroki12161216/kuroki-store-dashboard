@@ -397,7 +397,6 @@ window.addTaskFromModal = async function () {
   }
 };
 
-// タスク追加フォーム（タスク一覧画面）
 window.addTaskFromList = async function () {
   const storeName = taskAddStoreSelect.value;
   const item = taskAddItemInput.value;
@@ -410,12 +409,28 @@ window.addTaskFromList = async function () {
     return;
   }
 
-  // 該当する店舗診断表_idを検索
+  // 期限から診断月を算出（例：2025-03-01 → "202502"）
+  const dueDate = new Date(due);
+  const dueHumanMonth = dueDate.getMonth() + 1; // 1～12の値に変換
+  let diagnosticYear = dueDate.getFullYear();
+  let diagnosticMonth;
+  if (dueHumanMonth === 1) {
+    diagnosticMonth = 12;
+    diagnosticYear -= 1;
+  } else {
+    diagnosticMonth = dueHumanMonth - 1;
+  }
+  // 月は2桁表記（例："02"）
+  const diagnosticMonthStr = diagnosticMonth.toString().padStart(2, '0');
+  const diagnosticDataMonth = `${diagnosticYear}${diagnosticMonthStr}`;
+
+  // 対応する店舗診断表レコードを、店舗名、項目、月で検索
   const { data: diagData, error: diagError } = await supabase
     .from("店舗診断表")
     .select("id")
     .eq("店舗名", storeName)
-    .eq("項目", item);
+    .eq("項目", item)
+    .eq("月", diagnosticDataMonth);
   if (diagError) {
     console.error("店舗診断表検索エラー:", diagError);
     return;
@@ -425,10 +440,10 @@ window.addTaskFromList = async function () {
     return;
   }
 
-  // とりあえず最初のIDを取得して紐づけ
-  const diagId = diagData[0].id;
+  // 検索結果の最後のIDを紐づけとして取得
+  const diagId = diagData[diagData.length - 1].id;
 
-  // タスクテーブルに挿入
+  // タスクテーブルに新規タスクを挿入
   const { error: insertError } = await supabase.from("タスクテーブル").insert([
     {
       項目: item,
@@ -442,12 +457,12 @@ window.addTaskFromList = async function () {
     alert("タスク追加エラー:" + insertError.message);
   } else {
     alert("タスクを追加しました");
-    // フォームクリア
+    // フォームのクリア
     taskAddItemInput.value = "";
     taskAddDetailInput.value = "";
     taskAddDueInput.value = "";
     taskAddOwnerInput.value = "";
-    // 再描画
+    // タスク一覧を再描画
     fetchAndDisplayTasks();
   }
 };
