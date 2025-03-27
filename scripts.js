@@ -602,3 +602,144 @@ function updateSortIndicators(column, dir) {
     thOwner.textContent += arrow;
   }
 }
+
+/* =============================
+   ドラッグ＆ドロップ関連
+============================= */
+
+/**
+ * ドラッグ領域にファイルがドラッグされた際の処理
+ * @param {DragEvent} event
+ */
+export function handleDragEnter(event) {
+  event.preventDefault();
+}
+
+/**
+ * ドラッグ領域上でファイルがドラッグされている間の処理
+ * @param {DragEvent} event
+ */
+export function handleDragOver(event) {
+  event.preventDefault();
+}
+
+/**
+ * ファイルがドロップされた際に呼ばれる
+ * CSVファイルを読み込んでSupabaseへインサートする
+ * @param {DragEvent} event
+ */
+export async function handleDrop(event) {
+  event.preventDefault();
+  if (!event.dataTransfer.files || event.dataTransfer.files.length === 0) {
+    return;
+  }
+
+  const file = event.dataTransfer.files[0];
+  if (!file.name.endsWith('.csv')) {
+    alert('CSVファイルをドロップしてください。');
+    return;
+  }
+
+  try {
+    const records = await parseCsvFile(file);
+    // ここでSupabaseへのインサートを呼び出す
+    await insertDiagnostics(records);
+    alert('CSVデータをアップロードしました。');
+  } catch (error) {
+    console.error('CSVの処理中にエラーが発生:', error);
+    alert('CSV処理に失敗しました。内容をご確認ください。');
+  }
+}
+
+/* =============================
+   CSVファイル解析関連
+============================= */
+
+/**
+ * CSVファイルをテキストとして読み込み、パースして必要な形式のデータ配列を返す
+ * 想定カラム: 店舗名, 月, 項目, 目標数値, 実績, 差異
+ * @param {File} file
+ * @returns {Promise<Array>}
+ */
+export function parseCsvFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const text = e.target.result;
+      try {
+        const lines = text.split(/\r?\n/);
+        // 1行目をヘッダーと想定
+        // 例: 店舗名,月,項目,目標数値,実績,差異
+        lines.shift(); // ヘッダー行は削除
+
+        const results = [];
+        for (const line of lines) {
+          if (!line.trim()) {
+            continue; // 空行はスキップ
+          }
+          // カンマ区切りを想定 （シンプルなパース）
+          const cols = line.split(',');
+          if (cols.length < 6) {
+            // カラムが6つ未満ならスキップ or エラーとして扱う
+            continue;
+          }
+
+          // カラムを取得してトリム
+          const storeName   = cols[0].trim();
+          const month       = cols[1].trim();
+          const item        = cols[2].trim();
+          const targetValue = cols[3].trim();
+          const actualValue = cols[4].trim();
+          const diffValue   = cols[5].trim();
+
+          // 必要があれば数値への変換など
+          // 例: parseFloat(targetValue), parseFloat(actualValue) など
+
+          results.push({
+            store_name: storeName,
+            month: month,
+            item: item,
+            target_value: targetValue,
+            actual_value: actualValue,
+            difference: diffValue
+          });
+        }
+        resolve(results);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = function(e) {
+      reject(e);
+    };
+    reader.readAsText(file);
+  });
+}
+
+/* =============================
+   Supabaseへのインサート関連
+============================= */
+
+/**
+ * 店舗診断表のデータをSupabaseにインサートする
+ * @param {Array} records - parseCsvFile()が返すデータ配列
+ */
+export async function insertDiagnostics(records) {
+  try {
+    // 例： テーブル名 "diagnostics" としてインサート
+    // Supabaseクライアント(supabase)は事前に作成してください。
+    //
+    // const { data, error } = await supabase
+    //   .from('diagnostics')
+    //   .insert(records);
+    //
+    // if (error) throw error;
+
+    console.log('以下のレコードをSupabaseへインサートします:', records);
+    // 実際にSupabaseへ書き込みを行う場合は上記を参考にしてください。
+  } catch (error) {
+    console.error('Supabaseへのインサートに失敗:', error);
+    throw error;
+  }
+}
+
