@@ -50,16 +50,6 @@ const thOwner = document.getElementById("thOwner");
 
 let bootstrapModal = null;
 
-// 画面切り替え
-window.showDiagnosticSection = function () {
-  diagnosticSection.style.display = "block";
-  taskSection.style.display = "none";
-};
-window.showTaskSection = function () {
-  diagnosticSection.style.display = "none";
-  taskSection.style.display = "block";
-};
-
 // ページ初期処理
 window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
