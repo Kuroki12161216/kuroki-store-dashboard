@@ -603,6 +603,7 @@ function updateSortIndicators(column, dir) {
  */
 export function handleDragEnter(event) {
   event.preventDefault();
+  console.log("ドラッグ入力を検知")
 }
 
 /**
@@ -610,7 +611,7 @@ export function handleDragEnter(event) {
  * @param {DragEvent} event
  */
 export function handleDragOver(event) {
-  event.preventDefault();
+  event.preventDefault("ドラッグオーバーを検知");
 }
 
 /**
@@ -733,3 +734,6 @@ export async function insertDiagnostics(records) {
   }
 }
 
+window.handleDragEnter = handleDragEnter;
+window.handleDragOver = handleDragOver;
+window.handleDrop = handleDrop;
