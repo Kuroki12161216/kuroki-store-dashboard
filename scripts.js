@@ -687,12 +687,12 @@ export function parseCsvFile(file) {
           // 例: parseFloat(targetValue), parseFloat(actualValue) など
 
           results.push({
-            store_name: storeName,
-            month: month,
-            item: item,
-            target_value: targetValue,
-            actual_value: actualValue,
-            difference: diffValue
+            '店舗名': storeName,
+            '月': month,
+            '項目': item,
+            '目標数値': targetValue,
+            '実績': actualValue,
+            '差異': diffValue
           });
         }
         resolve(results);
