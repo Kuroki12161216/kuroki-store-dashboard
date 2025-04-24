@@ -711,25 +711,25 @@ export function parseCsvFile(file) {
    Supabaseへのインサート関連
 ============================= */
 
-/**
- * 店舗診断データを Supabase に upsert する
- *  - 店舗名・月・項目 の 3列を一意キーとみなし、既存行があれば更新
- *  - ひとつの payload が大きくなり過ぎないよう 500 行ずつ送信
- *
- * @param {Array<Object>} records  parseCsvFile() が返す配列
- * @throws エラー発生時は throw して呼び出し側へ伝搬
- */
 export async function insertDiagnostics(records) {
   if (!Array.isArray(records) || records.length === 0) return;
 
-  // ① 数値カラム（目標数値・実績・差異）を Number へ変換
-  const normalized = records.map(r => ({
-    ...r,
-    '目標数値': r['目標数値'] === '' ? null : Number(r['目標数値']),
-    '実績'    : r['実績']     === '' ? null : Number(r['実績']),
-    '差異'    : r['差異']     === '' ? null : Number(r['差異'])
-    // 仮説・ネクストアクションは文字列そのまま
-  }));
+  // ① 数値カラム（目標数値・実績・差異）を Number へ変換しつつ
+  //    店舗名・月・項目が空文字ならスキップ
+  const normalized = [];
+  for (const r of records) {
+    if (r['店舗名'] === '' || r['月'] === '' || r['項目'] === '') {
+      // 必須キーが空の場合はレコードをスキップ
+      continue;
+    }
+    normalized.push({
+      ...r,
+      '目標数値': r['目標数値'] === '' ? null : Number(r['目標数値']),
+      '実績'    : r['実績']     === '' ? null : Number(r['実績']),
+      '差異'    : r['差異']     === '' ? null : Number(r['差異']),
+      // 仮説・ネクストアクションは文字列そのまま
+    });
+  }
 
   // ② 500 行ずつ分割して upsert
   const CHUNK = 500;
@@ -751,7 +751,6 @@ export async function insertDiagnostics(records) {
     }
   }
 }
-
 
 window.handleDragEnter = handleDragEnter;
 window.handleDragOver = handleDragOver;
