@@ -726,7 +726,6 @@ export async function insertDiagnostics(records) {
       ...r,
       '目標数値': r['目標数値'] === '' ? null : Number(r['目標数値']),
       '実績'    : r['実績']     === '' ? null : Number(r['実績']),
-      '差異'    : r['差異']     === '' ? null : Number(r['差異']),
       // 仮説・ネクストアクションは文字列そのまま
     });
   }

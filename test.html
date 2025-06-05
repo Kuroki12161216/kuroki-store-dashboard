@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <title>マグロと炉端成る：ダッシュボード</title>
+
+  <!-- Chart.js -->
+ <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase UMD -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
+
+  <style>
+    /*―――――――――――――――――――――――――――――――――――――――
+      全体のリセット＆ベーススタイル
+    ――――――――――――――――――――――――――――――――――――――――*/
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      font-family: "Yu Gothic UI", "Hiragino Kaku Gothic Pro", Meiryo, sans-serif;
+      background-color: #f4f6fa;
+      color: #333;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /*―――――――――――――――――――――――――――――――――――――――
+      コンテナ・グリッド設定
+    ――――――――――――――――――――――――――――――――――――――――*/
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    /* ヘッダー + KPI カード をまとめた領域 */
+    .top-section {
+      display: grid;
+      grid-template-columns: 1fr; /* モバイル時は1列 */
+      grid-gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    /* PC以上では ヘッダー1行・KPIカード群は4列レイアウト */
+    @media (min-width: 768px) {
+      .top-section {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+
+    /* ヘッダー   */
+    .header-card {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-card select,
+    .header-card input[type="date"] {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      background-color: #fafafa;
+    }
+
+    /* KPIカード 定義 */
+    .kpi-card {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .kpi-card h3 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 8px;
+    }
+
+    .kpi-card .value {
+      font-size: 28px;
+      font-weight: bold;
+      color: #2b3a67;
+    }
+
+    .kpi-card .trend {
+      display: flex;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 12px;
+    }
+
+    .kpi-card .trend.up {
+      color: #31b057;
+    }
+
+    .kpi-card .trend.down {
+      color: #e12d39;
+    }
+
+    .kpi-card .trend .icon {
+      margin-right: 4px;
+      font-size: 14px;
+    }
+
+    /*―――――――――――――――――――――――――――――――――――――――
+      グラフカード領域
+    ――――――――――――――――――――――――――――――――――――――――*/
+    .chart-section {
+      display: grid;
+      grid-template-columns: 1fr; /* モバイル時：1列 */
+      grid-gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    @media (min-width: 768px) {
+      /* PC以上では1列のまま横幅100%表示 */
+      .chart-section {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* 個別グラフカード */
+    .chart-card {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 16px;
+      position: relative;
+      /* 高さを固定せずレスポンシブに */
+      height: 0;
+      /* アスペクト比 16:9 */
+      padding-bottom: 56.25%;
+    }
+
+    .chart-card canvas {
+      position: absolute;
+      top: 16px;     /* padding と被らないようずらす */
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      width: calc(100% - 32px);
+      height: calc(100% - 32px);
+    }
+
+    /*―――――――――――――――――――――――――――――――――――――――
+      下段グリッド領域（将来、複数グラフを配置したい場合） 
+      今回はお好みで増やせます。サンプルでは空のカードを並べています。
+    ――――――――――――――――――――――――――――――――――――――――*/
+    .lower-section {
+      display: grid;
+      grid-template-columns: 1fr; /* モバイル時：1列 */
+      grid-gap: 24px;
+    }
+
+    @media (min-width: 768px) {
+      /* PC以上：2列レイアウト */
+      .lower-section {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .lower-card {
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 16px;
+      min-height: 200px;
+      color: #999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- ===========================
+         1) 上段：ヘッダー + KPIカード群
+         =========================== -->
+    <div class="top-section">
+      <!-- 【ヘッダー】 店舗セレクト + 日付ピッカー -->
+      <div class="header-card">
+        <div>
+          <label for="store-select">店舗：</label>
+          <select id="store-select">
+            <option value="マグロと炉端成る">マグロと炉端成る</option>
+            <option value="マグロスタンダード錦糸町本店">マグロスタンダード錦糸町本店</option>
+            <option value="マグロスタンダード門前仲町店">マグロスタンダード門前仲町店</option>
+            <!-- 他の店舗を追加 -->
+          </select>
+        </div>
+        <div>
+          <label for="target-date">日付：</label>
+          <input type="date" id="target-date" value="">
+        </div>
+      </div>
+
+      <!-- 【KPIカード1】 売上 -->
+      <div class="kpi-card" id="kpi-sales">
+        <h3>売上</h3>
+        <div class="value">-- 円</div>
+        <div class="trend up">
+          <span class="icon">▲</span>
+          <span class="percent">--%</span>
+        </div>
+      </div>
+
+      <!-- 【KPIカード2】 来店客数 -->
+      <div class="kpi-card" id="kpi-visitors">
+        <h3>来店客数</h3>
+        <div class="value">-- 人</div>
+        <div class="trend up">
+          <span class="icon">▲</span>
+          <span class="percent">--%</span>
+        </div>
+      </div>
+
+      <!-- 【KPIカード3】 客単価 -->
+      <div class="kpi-card" id="kpi-avg">
+        <h3>客単価</h3>
+        <div class="value">-- 円</div>
+        <div class="trend down">
+          <span class="icon">▼</span>
+          <span class="percent">--%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===========================
+         2) 中段：売上目標 折れ線グラフ
+         =========================== -->
+    <div class="chart-section">
+      <div class="chart-card">
+        <canvas id="myLineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- ===========================
+         3) 下段：将来的に他のグラフやランキングなどを配置可能
+         =========================== -->
+    <div class="lower-section">
+      <div class="lower-card">ここに別のグラフやランキングを配置できます</div>
+      <div class="lower-card">空のカードサンプル</div>
+    </div>
+  </div>
+
+
+  <script>
+    (async () => {
+      // =========================
+      // 1) Supabase 初期化
+      // =========================
+      const SUPABASE_URL = "https://djgylzypyunbcetvquom.supabase.co";
+      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZ3lsenlweXVuYmNldHZxdW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4MTk3MjgsImV4cCI6MjA1NjM5NTcyOH0.tRwiVkMiCIvONpjyAJAt3FZ2iUIy6ihaAiHMtZ3bFI0";
+      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // =========================
+      // 2) DOM要素取得
+      // =========================
+      const storeSelect = document.getElementById("store-select");
+      const targetDateInput = document.getElementById("target-date");
+
+      // KPIカード要素
+      const kpiSales    = document.querySelector("#kpi-sales .value");
+      const kpiSalesTrend   = document.querySelector("#kpi-sales .trend .percent");
+      const kpiSalesTrendIcon = document.querySelector("#kpi-sales .trend .icon");
+
+      const kpiVisitors = document.querySelector("#kpi-visitors .value");
+      const kpiVisitorsTrend   = document.querySelector("#kpi-visitors .trend .percent");
+      const kpiVisitorsTrendIcon = document.querySelector("#kpi-visitors .trend .icon");
+
+      const kpiAvg      = document.querySelector("#kpi-avg .value");
+      const kpiAvgTrend      = document.querySelector("#kpi-avg .trend .percent");
+      const kpiAvgTrendIcon  = document.querySelector("#kpi-avg .trend .icon");
+
+      // グラフ描画用コンテキスト
+      const ctx = document.getElementById("myLineChart").getContext("2d");
+      let salesChart = null;
+
+      // =========================
+      // 3) 関数定義：KPI と グラフ描画
+      // =========================
+
+      /**
+       * KPI数値と、その前年比/前月比（アップ・ダウン%）を取得して
+       * 各カードに反映する関数の例（ダミー実装）
+       * 実際には別のテーブルから該当店舗・該当日付のレコードを拾ってください
+       */
+      async function updateKPI(store, dateStr) {
+        // 例）日付を「YYYY-MM」に変換（テーブル絞り込み用）
+        const month = dateStr.slice(0, 7); // ex. "2025-06"
+
+        // ダミーデータ：実際はSupabaseから取得して反映する
+        const dummy = {
+          sales: 283140,
+          salesTrend: 12,       // 前月比+12%
+          visitors: 53,
+          visitorsTrend: 8,     // 前月比+8%
+          avg: 5342,
+          avgTrend: -5          // 前月比-5%
+        };
+
+        // 売上
+        kpiSales.textContent = dummy.sales.toLocaleString() + " 円";
+        if (dummy.salesTrend >= 0) {
+          kpiSalesTrendIcon.textContent = "▲";
+          kpiSalesTrend.parentElement.classList.remove("down");
+          kpiSalesTrend.parentElement.classList.add("up");
+          kpiSalesTrend.textContent = Math.abs(dummy.salesTrend) + "%";
+        } else {
+          kpiSalesTrendIcon.textContent = "▼";
+          kpiSalesTrend.parentElement.classList.remove("up");
+          kpiSalesTrend.parentElement.classList.add("down");
+          kpiSalesTrend.textContent = Math.abs(dummy.salesTrend) + "%";
+        }
+
+        // 来店客数
+        kpiVisitors.textContent = dummy.visitors.toLocaleString() + " 人";
+        if (dummy.visitorsTrend >= 0) {
+          kpiVisitorsTrendIcon.textContent = "▲";
+          kpiVisitorsTrend.parentElement.classList.remove("down");
+          kpiVisitorsTrend.parentElement.classList.add("up");
+          kpiVisitorsTrend.textContent = Math.abs(dummy.visitorsTrend) + "%";
+        } else {
+          kpiVisitorsTrendIcon.textContent = "▼";
+          kpiVisitorsTrend.parentElement.classList.remove("up");
+          kpiVisitorsTrend.parentElement.classList.add("down");
+          kpiVisitorsTrend.textContent = Math.abs(dummy.visitorsTrend) + "%";
+        }
+
+        // 客単価
+        kpiAvg.textContent = dummy.avg.toLocaleString() + " 円";
+        if (dummy.avgTrend >= 0) {
+          kpiAvgTrendIcon.textContent = "▲";
+          kpiAvgTrend.parentElement.classList.remove("down");
+          kpiAvgTrend.parentElement.classList.add("up");
+          kpiAvgTrend.textContent = Math.abs(dummy.avgTrend) + "%";
+        } else {
+          kpiAvgTrendIcon.textContent = "▼";
+          kpiAvgTrend.parentElement.classList.remove("up");
+          kpiAvgTrend.parentElement.classList.add("down");
+          kpiAvgTrend.textContent = Math.abs(dummy.avgTrend) + "%";
+        }
+      }
+
+      /**
+       * 売上目標をSupabaseから取得し、折れ線グラフを描画／更新する関数
+       */
+      async function renderSalesChart(store, dateStr) {
+        // 例）日付を「YYYY-MM」に変換
+        const month = dateStr.slice(0, 7);
+
+        // Supabaseからデータ取得
+        const { data, error } = await supabaseClient
+          .from("店舗診断表")
+          .select("月, 目標数値")
+          .eq("店舗名", store)
+          .eq("項目", "売上")
+          .order("月", { ascending: true });
+
+        if (error) {
+          console.error("グラフ用データ取得エラー:", error);
+          return;
+        }
+        if (!data || data.length === 0) {
+          console.warn("グラフ用データがありません");
+          return;
+        }
+
+        // ラベル・データ配列を作成
+        const labels = data.map(row => row.月);
+        const targetValues = data.map(row => Number(row.目標数値));
+
+        // すでにグラフが描かれていれば破棄
+        if (salesChart) {
+          salesChart.destroy();
+        }
+
+        // Chart.js で折れ線グラフを描画
+        salesChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: '売上目標（円）',
+              data: targetValues,
+              borderColor: "rgba(54, 162, 235, 1)",
+              backgroundColor: "rgba(54, 162, 235, 0.2)",
+              fill: false,
+              lineTension: 0.1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            title: {
+              display: true,
+              text: store + '：月別売上目標'
+            },
+            scales: {
+              xAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: '月'
+                },
+                ticks: {
+                  autoSkip: false,
+                  maxRotation: 45,
+                  minRotation: 0
+                }
+              }],
+              yAxes: [{
+                scaleLabel: {
+                  display: true,
+                  labelString: '売上目標（円）'
+                },
+                ticks: {
+                  beginAtZero: true,
+                  callback: function (value) {
+                    return value.toLocaleString() + ' 円';
+                  }
+                }
+              }]
+            },
+            legend: {
+              display: false
+            },
+            tooltips: {
+              callbacks: {
+                label: function (tooltipItem, data) {
+                  const value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+                  return '¥ ' + value.toLocaleString();
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // =========================
+      // 4) 初期表示
+      // =========================
+      // デフォルト：プルダウンの最初の店舗を選択、日付は今日
+      const today = new Date().toISOString().slice(0, 10);
+      targetDateInput.value = today;
+
+      // KPI と グラフを初期描画
+      await updateKPI(storeSelect.value, targetDateInput.value);
+      await renderSalesChart(storeSelect.value, targetDateInput.value);
+
+      // =========================
+      // 5) イベント：店舗 or 日付変更時の再描画
+      // =========================
+      storeSelect.addEventListener("change", async () => {
+        await updateKPI(storeSelect.value, targetDateInput.value);
+        await renderSalesChart(storeSelect.value, targetDateInput.value);
+      });
+
+      targetDateInput.addEventListener("change", async () => {
+        await updateKPI(storeSelect.value, targetDateInput.value);
+        await renderSalesChart(storeSelect.value, targetDateInput.value);
+      });
+    })();
+  </script>
+</body>
+
+</html>
