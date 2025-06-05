@@ -713,7 +713,7 @@ export function parseCsvFile(file) {
 
 export async function insertDiagnostics(records) {
   if (!Array.isArray(records) || records.length === 0) return;
-
+  console.log(records);
   // ① 数値カラム（目標数値・実績・差異）を Number へ変換しつつ
   //    店舗名・月・項目が空文字ならスキップ
   const normalized = [];
@@ -734,7 +734,7 @@ export async function insertDiagnostics(records) {
   const CHUNK = 500;
   for (let i = 0; i < normalized.length; i += CHUNK) {
     const chunk = normalized.slice(i, i + CHUNK);
-
+    console.log(chunk);
     const { error } = await supabase
       .from('店舗診断表')
       .upsert(chunk, {
