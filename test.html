@@ -6,7 +6,7 @@
   <title>マグロと炉端成る：ダッシュボード</title>
 
   <!-- Chart.js -->
- <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Supabase UMD -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
 
@@ -20,7 +20,8 @@
       box-sizing: border-box;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
       font-family: "Yu Gothic UI", "Hiragino Kaku Gothic Pro", Meiryo, sans-serif;
       background-color: #f4f6fa;
@@ -44,15 +45,31 @@
     /* ヘッダー + KPI カード をまとめた領域 */
     .top-section {
       display: grid;
-      grid-template-columns: 1fr; /* モバイル時は1列 */
       grid-gap: 16px;
+      /* モバイル：1列 */
+      grid-template-columns: 1fr;
       margin-bottom: 24px;
     }
 
-    /* PC以上では ヘッダー1行・KPIカード群は4列レイアウト */
+    /* デスクトップ：5分割グリッド */
     @media (min-width: 768px) {
       .top-section {
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
+      }
+
+      /* ヘッダーを3分割 */
+      .top-section .header-card {
+        grid-column: span 3;
+      }
+
+      /* 売上を1分割 */
+      .top-section #kpi-sales {
+        grid-column: span 1;
+      }
+
+      /* 単価を1分割 */
+      .top-section #kpi-unitprice {
+        grid-column: span 1;
       }
     }
 
@@ -60,7 +77,7 @@
     .header-card {
       background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       padding: 12px 16px;
       display: flex;
       align-items: center;
@@ -80,7 +97,7 @@
     .kpi-card {
       background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       padding: 16px;
       display: flex;
       flex-direction: column;
@@ -119,17 +136,46 @@
       font-size: 14px;
     }
 
+    /* KPIカード３段用レイアウト */
+    .kpi-section {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-row {
+      display: grid;
+      grid-gap: 16px;
+    }
+
+    /* ２段目・３段目はそれぞれ5列 */
+    .kpi-row.row-2,
+    .kpi-row.row-3 {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    /* モバイル：全段1列 */
+    @media (max-width: 767px) {
+      .kpi-row {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+
     /*―――――――――――――――――――――――――――――――――――――――
       グラフカード領域
     ――――――――――――――――――――――――――――――――――――――――*/
     .chart-section {
       display: grid;
-      grid-template-columns: 1fr; /* モバイル時：1列 */
+      grid-template-columns: 1fr;
+      /* モバイル時：1列 */
       grid-gap: 24px;
       margin-bottom: 24px;
     }
 
     @media (min-width: 768px) {
+
       /* PC以上では1列のまま横幅100%表示 */
       .chart-section {
         grid-template-columns: 1fr;
@@ -140,7 +186,7 @@
     .chart-card {
       background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       padding: 16px;
       position: relative;
       /* 高さを固定せずレスポンシブに */
@@ -151,7 +197,8 @@
 
     .chart-card canvas {
       position: absolute;
-      top: 16px;     /* padding と被らないようずらす */
+      top: 16px;
+      /* padding と被らないようずらす */
       left: 16px;
       right: 16px;
       bottom: 16px;
@@ -165,11 +212,13 @@
     ――――――――――――――――――――――――――――――――――――――――*/
     .lower-section {
       display: grid;
-      grid-template-columns: 1fr; /* モバイル時：1列 */
+      grid-template-columns: 1fr;
+      /* モバイル時：1列 */
       grid-gap: 24px;
     }
 
     @media (min-width: 768px) {
+
       /* PC以上：2列レイアウト */
       .lower-section {
         grid-template-columns: repeat(2, 1fr);
@@ -179,7 +228,7 @@
     .lower-card {
       background-color: #fff;
       border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
       padding: 16px;
       min-height: 200px;
       color: #999;
@@ -196,15 +245,12 @@
          1) 上段：ヘッダー + KPIカード群
          =========================== -->
     <div class="top-section">
-      <!-- 【ヘッダー】 店舗セレクト + 日付ピッカー -->
+      <!-- 【ヘッダー】 -->
       <div class="header-card">
         <div>
           <label for="store-select">店舗：</label>
           <select id="store-select">
-            <option value="マグロと炉端成る">マグロと炉端成る</option>
-            <option value="マグロスタンダード錦糸町本店">マグロスタンダード錦糸町本店</option>
-            <option value="マグロスタンダード門前仲町店">マグロスタンダード門前仲町店</option>
-            <!-- 他の店舗を追加 -->
+            <!-- … -->
           </select>
         </div>
         <div>
@@ -213,53 +259,100 @@
         </div>
       </div>
 
-      <!-- 【KPIカード1】 売上 -->
+      <!-- 【KPI：売上】 -->
       <div class="kpi-card" id="kpi-sales">
         <h3>売上</h3>
         <div class="value">-- 円</div>
         <div class="trend up">
-          <span class="icon">▲</span>
-          <span class="percent">--%</span>
+          <span class="icon">▲</span><span class="percent">--%</span>
         </div>
       </div>
 
-      <!-- 【KPIカード2】 来店客数 -->
-      <div class="kpi-card" id="kpi-visitors">
-        <h3>来店客数</h3>
-        <div class="value">-- 人</div>
-        <div class="trend up">
-          <span class="icon">▲</span>
-          <span class="percent">--%</span>
-        </div>
-      </div>
-
-      <!-- 【KPIカード3】 客単価 -->
-      <div class="kpi-card" id="kpi-avg">
-        <h3>客単価</h3>
+      <!-- 【KPI：単価】 -->
+      <div class="kpi-card" id="kpi-unitprice">
+        <h3>単価</h3>
         <div class="value">-- 円</div>
-        <div class="trend down">
-          <span class="icon">▼</span>
-          <span class="percent">--%</span>
+        <div class="trend up">
+          <span class="icon">▲</span><span class="percent">--%</span>
         </div>
       </div>
     </div>
 
-    <!-- ===========================
+    <!-- ２段目：5列 -->
+    <div class="kpi-row row-2">
+      <div class="kpi-card">
+        <h3>人時売上高</h3>
+        <div class="value">--</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>F</h3>
+        <div class="value">--</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>D</h3>
+        <div class="value">--</div>
+        <div class="trend down"><span class="icon">▼</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>人件費</h3>
+        <div class="value">-- 円</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>臨店シート</h3>
+        <div class="value">--</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+    </div>
+
+    <!-- ３段目：5列 -->
+    <div class="kpi-row row-3">
+      <div class="kpi-card">
+        <h3>店舗MTG参加率</h3>
+        <div class="value">--%</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>CSアンケート</h3>
+        <div class="value">-- 点</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>面談進捗</h3>
+        <div class="value">--%</div>
+        <div class="trend down"><span class="icon">▼</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>PAリファラル採用</h3>
+        <div class="value">-- 名</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+      <div class="kpi-card">
+        <h3>点数</h3>
+        <div class="value">-- 点</div>
+        <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+      </div>
+    </div>
+
+
+  <!-- ===========================
          2) 中段：売上目標 折れ線グラフ
          =========================== -->
-    <div class="chart-section">
-      <div class="chart-card">
-        <canvas id="myLineChart"></canvas>
-      </div>
+  <div class="chart-section">
+    <div class="chart-card">
+      <canvas id="myLineChart"></canvas>
     </div>
+  </div>
 
-    <!-- ===========================
+  <!-- ===========================
          3) 下段：将来的に他のグラフやランキングなどを配置可能
          =========================== -->
-    <div class="lower-section">
-      <div class="lower-card">ここに別のグラフやランキングを配置できます</div>
-      <div class="lower-card">空のカードサンプル</div>
-    </div>
+  <div class="lower-section">
+    <div class="lower-card">ここに別のグラフやランキングを配置できます</div>
+    <div class="lower-card">空のカードサンプル</div>
+  </div>
   </div>
 
 
@@ -279,17 +372,17 @@
       const targetDateInput = document.getElementById("target-date");
 
       // KPIカード要素
-      const kpiSales    = document.querySelector("#kpi-sales .value");
-      const kpiSalesTrend   = document.querySelector("#kpi-sales .trend .percent");
+      const kpiSales = document.querySelector("#kpi-sales .value");
+      const kpiSalesTrend = document.querySelector("#kpi-sales .trend .percent");
       const kpiSalesTrendIcon = document.querySelector("#kpi-sales .trend .icon");
 
       const kpiVisitors = document.querySelector("#kpi-visitors .value");
-      const kpiVisitorsTrend   = document.querySelector("#kpi-visitors .trend .percent");
+      const kpiVisitorsTrend = document.querySelector("#kpi-visitors .trend .percent");
       const kpiVisitorsTrendIcon = document.querySelector("#kpi-visitors .trend .icon");
 
-      const kpiAvg      = document.querySelector("#kpi-avg .value");
-      const kpiAvgTrend      = document.querySelector("#kpi-avg .trend .percent");
-      const kpiAvgTrendIcon  = document.querySelector("#kpi-avg .trend .icon");
+      const kpiAvg = document.querySelector("#kpi-avg .value");
+      const kpiAvgTrend = document.querySelector("#kpi-avg .trend .percent");
+      const kpiAvgTrendIcon = document.querySelector("#kpi-avg .trend .icon");
 
       // グラフ描画用コンテキスト
       const ctx = document.getElementById("myLineChart").getContext("2d");
