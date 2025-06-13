@@ -236,6 +236,24 @@
       align-items: center;
       justify-content: center;
     }
+
+    .chart-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .chart-controls label {
+      font-size: 14px;
+    }
+
+    .chart-controls input[type="month"] {
+      padding: 4px 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #fafafa;
+    }
   </style>
 </head>
 
@@ -250,6 +268,7 @@
         <div>
           <label for="store-select">店舗：</label>
           <select id="store-select">
+            <option>マグロと炉端成る</option>
             <!-- … -->
           </select>
         </div>
@@ -337,22 +356,28 @@
     </div>
 
 
-  <!-- ===========================
+    <!-- ===========================
          2) 中段：売上目標 折れ線グラフ
          =========================== -->
-  <div class="chart-section">
-    <div class="chart-card">
-      <canvas id="myLineChart"></canvas>
+    <div class="chart-section">
+      <div class="chart-controls">
+        <label for="start-month">開始月：</label>
+        <input type="month" id="start-month" />
+        <label for="end-month">終了月：</label>
+        <input type="month" id="end-month" />
+      </div>
+      <div class="chart-card">
+        <canvas id="myLineChart"></canvas>
+      </div>
     </div>
-  </div>
 
-  <!-- ===========================
+    <!-- ===========================
          3) 下段：将来的に他のグラフやランキングなどを配置可能
          =========================== -->
-  <div class="lower-section">
-    <div class="lower-card">ここに別のグラフやランキングを配置できます</div>
-    <div class="lower-card">空のカードサンプル</div>
-  </div>
+    <div class="lower-section">
+      <div class="lower-card">ここに別のグラフやランキングを配置できます</div>
+      <div class="lower-card">空のカードサンプル</div>
+    </div>
   </div>
 
 
@@ -376,17 +401,13 @@
       const kpiSalesTrend = document.querySelector("#kpi-sales .trend .percent");
       const kpiSalesTrendIcon = document.querySelector("#kpi-sales .trend .icon");
 
-      const kpiVisitors = document.querySelector("#kpi-visitors .value");
-      const kpiVisitorsTrend = document.querySelector("#kpi-visitors .trend .percent");
-      const kpiVisitorsTrendIcon = document.querySelector("#kpi-visitors .trend .icon");
-
-      const kpiAvg = document.querySelector("#kpi-avg .value");
-      const kpiAvgTrend = document.querySelector("#kpi-avg .trend .percent");
-      const kpiAvgTrendIcon = document.querySelector("#kpi-avg .trend .icon");
-
       // グラフ描画用コンテキスト
       const ctx = document.getElementById("myLineChart").getContext("2d");
       let salesChart = null;
+
+      // 追加：開始月・終了月のDOM取得
+      const startMonthInput = document.getElementById("start-month");
+      const endMonthInput = document.getElementById("end-month");
 
       // =========================
       // 3) 関数定義：KPI と グラフ描画
@@ -424,42 +445,12 @@
           kpiSalesTrend.parentElement.classList.add("down");
           kpiSalesTrend.textContent = Math.abs(dummy.salesTrend) + "%";
         }
-
-        // 来店客数
-        kpiVisitors.textContent = dummy.visitors.toLocaleString() + " 人";
-        if (dummy.visitorsTrend >= 0) {
-          kpiVisitorsTrendIcon.textContent = "▲";
-          kpiVisitorsTrend.parentElement.classList.remove("down");
-          kpiVisitorsTrend.parentElement.classList.add("up");
-          kpiVisitorsTrend.textContent = Math.abs(dummy.visitorsTrend) + "%";
-        } else {
-          kpiVisitorsTrendIcon.textContent = "▼";
-          kpiVisitorsTrend.parentElement.classList.remove("up");
-          kpiVisitorsTrend.parentElement.classList.add("down");
-          kpiVisitorsTrend.textContent = Math.abs(dummy.visitorsTrend) + "%";
-        }
-
-        // 客単価
-        kpiAvg.textContent = dummy.avg.toLocaleString() + " 円";
-        if (dummy.avgTrend >= 0) {
-          kpiAvgTrendIcon.textContent = "▲";
-          kpiAvgTrend.parentElement.classList.remove("down");
-          kpiAvgTrend.parentElement.classList.add("up");
-          kpiAvgTrend.textContent = Math.abs(dummy.avgTrend) + "%";
-        } else {
-          kpiAvgTrendIcon.textContent = "▼";
-          kpiAvgTrend.parentElement.classList.remove("up");
-          kpiAvgTrend.parentElement.classList.add("down");
-          kpiAvgTrend.textContent = Math.abs(dummy.avgTrend) + "%";
-        }
       }
 
       /**
        * 売上目標をSupabaseから取得し、折れ線グラフを描画／更新する関数
        */
-      async function renderSalesChart(store, dateStr) {
-        // 例）日付を「YYYY-MM」に変換
-        const month = dateStr.slice(0, 7);
+      async function renderSalesChart(store, startMonth, endMonth) {
 
         // Supabaseからデータ取得
         const { data, error } = await supabaseClient
@@ -467,6 +458,8 @@
           .select("月, 目標数値")
           .eq("店舗名", store)
           .eq("項目", "売上")
+          .gte("月", startMonth)     // 月 >= 開始月
+          .lte("月", endMonth)       // 月 <= 終了月
           .order("月", { ascending: true });
 
         if (error) {
@@ -479,68 +472,49 @@
         }
 
         // ラベル・データ配列を作成
-        const labels = data.map(row => row.月);
-        const targetValues = data.map(row => Number(row.目標数値));
+        const labels = data.map(r => r.月);
+        const targetValues = data.map(r => Number(r.目標数値));
 
         // すでにグラフが描かれていれば破棄
-        if (salesChart) {
-          salesChart.destroy();
-        }
-
-        // Chart.js で折れ線グラフを描画
+        if (salesChart) salesChart.destroy();
         salesChart = new Chart(ctx, {
           type: 'line',
           data: {
-            labels: labels,
-            datasets: [{
+            labels, datasets: [{
               label: '売上目標（円）',
               data: targetValues,
-              borderColor: "rgba(54, 162, 235, 1)",
-              backgroundColor: "rgba(54, 162, 235, 0.2)",
+              borderColor: 'rgba(54, 162, 235, 1)',
+              backgroundColor: 'rgba(54, 162, 235, 0.2)',
               fill: false,
-              lineTension: 0.1
+              tension: 0.1
             }]
           },
           options: {
             responsive: true,
             maintainAspectRatio: false,
-            title: {
-              display: true,
-              text: store + '：月別売上目標'
-            },
-            scales: {
-              xAxes: [{
-                scaleLabel: {
-                  display: true,
-                  labelString: '月'
-                },
-                ticks: {
-                  autoSkip: false,
-                  maxRotation: 45,
-                  minRotation: 0
-                }
-              }],
-              yAxes: [{
-                scaleLabel: {
-                  display: true,
-                  labelString: '売上目標（円）'
-                },
-                ticks: {
-                  beginAtZero: true,
-                  callback: function (value) {
-                    return value.toLocaleString() + ' 円';
+            plugins: {
+              title: { display: true, text: `${store}：月別売上目標` },
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label(ctx) {
+                    const v = ctx.dataset.data[ctx.dataIndex];
+                    return `¥ ${v.toLocaleString()}`;
                   }
                 }
-              }]
+              }
             },
-            legend: {
-              display: false
-            },
-            tooltips: {
-              callbacks: {
-                label: function (tooltipItem, data) {
-                  const value = data.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
-                  return '¥ ' + value.toLocaleString();
+            scales: {
+              x: {
+                type: 'category',
+                title: { display: true, text: '月' },
+                ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }
+              },
+              y: {
+                beginAtZero: true,
+                title: { display: true, text: '売上目標（円）' },
+                ticks: {
+                  callback(v) { return v.toLocaleString() + ' 円'; }
                 }
               }
             }
@@ -551,26 +525,35 @@
       // =========================
       // 4) 初期表示
       // =========================
-      // デフォルト：プルダウンの最初の店舗を選択、日付は今日
-      const today = new Date().toISOString().slice(0, 10);
-      targetDateInput.value = today;
+      const today = new Date();
+      const yyyymm = today.toISOString().slice(0, 7);
+      const pastMonth = new Date(today.setMonth(today.getMonth() - 5))
+        .toISOString().slice(0, 7);
 
-      // KPI と グラフを初期描画
+      startMonthInput.value = pastMonth;  // 6ヶ月前
+      endMonthInput.value = yyyymm;     // 今月
+
+      // 初回描画（KPIは日付だけ、グラフは月範囲で）
       await updateKPI(storeSelect.value, targetDateInput.value);
-      await renderSalesChart(storeSelect.value, targetDateInput.value);
+      await renderSalesChart(storeSelect.value, startMonthInput.value, endMonthInput.value);
 
       // =========================
-      // 5) イベント：店舗 or 日付変更時の再描画
+      // 5) イベント：各種変更時の再描画
       // =========================
+      const redrawChart = async () => {
+        await renderSalesChart(storeSelect.value, startMonthInput.value, endMonthInput.value);
+      };
+
       storeSelect.addEventListener("change", async () => {
         await updateKPI(storeSelect.value, targetDateInput.value);
-        await renderSalesChart(storeSelect.value, targetDateInput.value);
+        await redrawChart();
       });
-
       targetDateInput.addEventListener("change", async () => {
         await updateKPI(storeSelect.value, targetDateInput.value);
-        await renderSalesChart(storeSelect.value, targetDateInput.value);
       });
+      startMonthInput.addEventListener("change", redrawChart);
+      endMonthInput.addEventListener("change", redrawChart);
+
     })();
   </script>
 </body>
