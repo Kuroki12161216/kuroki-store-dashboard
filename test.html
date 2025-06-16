@@ -451,14 +451,16 @@
       // --- B) KPI 更新 ---
       async function updateKPI(store, dateStr) {
         if (!store || !dateStr) return;
-        const month = dateStr.slice(0, 7); // "YYYY-MM"
-
+        let month = dateStr.slice(0, 7); // "YYYY-MM"
+        month = month.replace("-","")
+        console.log(month)
         // supabase から当月の KPI データを一括取得
         const { data, error } = await supabaseClient
           .from("店舗診断表")
-          .select("項目, 値")
+          .select("項目,月,店舗名")
           .eq("店舗名", store)
-          .eq("月", month);
+          // .eq("月", month);
+          console.log(data)
         if (error) {
           console.error("KPI取得エラー:", error);
           return;
@@ -496,7 +498,7 @@
 
         const { data, error } = await supabaseClient
           .from("店舗診断表")
-          .select("値")
+          .select("項目")
           .eq("店舗名", store)
           .eq("月", prevStr)
           .eq("項目", item)
