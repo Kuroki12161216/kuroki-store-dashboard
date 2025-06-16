@@ -274,7 +274,7 @@
         </div>
         <div>
           <label for="target-date">日付：</label>
-          <input type="date" id="target-date" value="">
+          <input type="month" id="target-date" value="">
         </div>
       </div>
 
@@ -418,33 +418,92 @@
        * 各カードに反映する関数の例（ダミー実装）
        * 実際には別のテーブルから該当店舗・該当日付のレコードを拾ってください
        */
-      async function updateKPI(store, dateStr) {
-        // 例）日付を「YYYY-MM」に変換（テーブル絞り込み用）
-        const month = dateStr.slice(0, 7); // ex. "2025-06"
+      // =========================
+      // 3) 関数定義
+      // =========================
 
-        // ダミーデータ：実際はSupabaseから取得して反映する
-        const dummy = {
-          sales: 283140,
-          salesTrend: 12,       // 前月比+12%
-          visitors: 53,
-          visitorsTrend: 8,     // 前月比+8%
-          avg: 5342,
-          avgTrend: -5          // 前月比-5%
-        };
-
-        // 売上
-        kpiSales.textContent = dummy.sales.toLocaleString() + " 円";
-        if (dummy.salesTrend >= 0) {
-          kpiSalesTrendIcon.textContent = "▲";
-          kpiSalesTrend.parentElement.classList.remove("down");
-          kpiSalesTrend.parentElement.classList.add("up");
-          kpiSalesTrend.textContent = Math.abs(dummy.salesTrend) + "%";
-        } else {
-          kpiSalesTrendIcon.textContent = "▼";
-          kpiSalesTrend.parentElement.classList.remove("up");
-          kpiSalesTrend.parentElement.classList.add("down");
-          kpiSalesTrend.textContent = Math.abs(dummy.salesTrend) + "%";
+      // --- A) 店舗名リストを取得して <select> に流し込む（クライアント側で重複除去） ---
+      async function populateStoreSelect() {
+        // まずは全レコードから「店舗名」だけ取得
+        const { data, error } = await supabaseClient
+          .from("店舗診断表")
+          .select("店舗名")
+          .order("店舗名", { ascending: true });
+        if (error) {
+          console.error("店舗名取得エラー:", error);
+          return;
         }
+
+        // JS 側で重複を除去
+        const names = data.map(r => r.店舗名);
+        const uniqueNames = Array.from(new Set(names));
+
+        // オプションをクリアしてから追加
+        storeSelect.innerHTML = "";
+        uniqueNames.forEach(name => {
+          const opt = document.createElement("option");
+          opt.value = opt.textContent = name;
+          storeSelect.appendChild(opt);
+        });
+      }
+
+
+      // --- B) KPI 更新 ---
+      async function updateKPI(store, dateStr) {
+        if (!store || !dateStr) return;
+        const month = dateStr.slice(0, 7); // "YYYY-MM"
+
+        // supabase から当月の KPI データを一括取得
+        const { data, error } = await supabaseClient
+          .from("店舗診断表")
+          .select("項目, 値")
+          .eq("店舗名", store)
+          .eq("月", month);
+        if (error) {
+          console.error("KPI取得エラー:", error);
+          return;
+        }
+        // 例：売上と前月比の取得
+        const salesRecord = data.find(r => r.項目 === "売上");
+        const salesPrev = await fetchPrevValue(store, month, "売上"); // 下記 D) 参照
+
+        // 表示更新
+        const salesValue = salesRecord ? Number(salesRecord.値) : 0;
+        kpiSales.textContent = salesValue.toLocaleString() + " 円";
+
+        if (salesPrev !== null) {
+          const diff = salesValue - salesPrev;
+          const rate = salesPrev === 0 ? 0 : Math.round((diff / salesPrev) * 100);
+          if (rate >= 0) {
+            kpiSalesTrendIcon.textContent = "▲";
+            kpiSalesTrend.parentElement.classList.replace("down", "up");
+          } else {
+            kpiSalesTrendIcon.textContent = "▼";
+            kpiSalesTrend.parentElement.classList.replace("up", "down");
+          }
+          kpiSalesTrend.textContent = Math.abs(rate) + "%";
+        }
+
+        // 同様に「単価」「人時売上高」などのカードも data.find して更新してください
+      }
+
+      // --- C) 前月の値を取ってくるヘルパー関数 ---
+      async function fetchPrevValue(store, month, item) {
+        // month: "2025-06" → prevMonth: "2025-05"
+        const [y, m] = month.split("-").map(Number);
+        const prev = new Date(y, m - 2, 1);
+        const prevStr = prev.toISOString().slice(0, 7);
+
+        const { data, error } = await supabaseClient
+          .from("店舗診断表")
+          .select("値")
+          .eq("店舗名", store)
+          .eq("月", prevStr)
+          .eq("項目", item)
+          .limit(1)
+          .single();
+        if (error || !data) return null;
+        return Number(data.値);
       }
 
       /**
@@ -523,36 +582,49 @@
       }
 
       // =========================
-      // 4) 初期表示
+      // 4) 初期表示／イベント登録
       // =========================
       const today = new Date();
       const yyyymm = today.toISOString().slice(0, 7);
-      const pastMonth = new Date(today.setMonth(today.getMonth() - 5))
+      const past6 = new Date(today.setMonth(today.getMonth() - 5))
         .toISOString().slice(0, 7);
 
-      startMonthInput.value = pastMonth;  // 6ヶ月前
-      endMonthInput.value = yyyymm;     // 今月
+      // A) 店舗リストを取得して select に反映
+      await populateStoreSelect();
 
-      // 初回描画（KPIは日付だけ、グラフは月範囲で）
+      // B) Date picker にデフォルト値をセット
+      targetDateInput.value = yyyymm;
+      document.getElementById("start-month").value = past6;
+      document.getElementById("end-month").value = yyyymm;
+
+      // C) 初回 KPI・グラフ描画
       await updateKPI(storeSelect.value, targetDateInput.value);
-      await renderSalesChart(storeSelect.value, startMonthInput.value, endMonthInput.value);
+      await renderSalesChart(storeSelect.value,
+        document.getElementById("start-month").value,
+        document.getElementById("end-month").value);
 
-      // =========================
-      // 5) イベント：各種変更時の再描画
-      // =========================
-      const redrawChart = async () => {
-        await renderSalesChart(storeSelect.value, startMonthInput.value, endMonthInput.value);
-      };
-
+      // D) イベント：変更時に再描画
       storeSelect.addEventListener("change", async () => {
         await updateKPI(storeSelect.value, targetDateInput.value);
-        await redrawChart();
+        await renderSalesChart(storeSelect.value,
+          document.getElementById("start-month").value,
+          document.getElementById("end-month").value);
       });
-      targetDateInput.addEventListener("change", async () => {
-        await updateKPI(storeSelect.value, targetDateInput.value);
-      });
-      startMonthInput.addEventListener("change", redrawChart);
-      endMonthInput.addEventListener("change", redrawChart);
+      targetDateInput.addEventListener("change", () =>
+        updateKPI(storeSelect.value, targetDateInput.value)
+      );
+      document.getElementById("start-month")
+        .addEventListener("change", () =>
+          renderSalesChart(storeSelect.value,
+            document.getElementById("start-month").value,
+            document.getElementById("end-month").value)
+        );
+      document.getElementById("end-month")
+        .addEventListener("change", () =>
+          renderSalesChart(storeSelect.value,
+            document.getElementById("start-month").value,
+            document.getElementById("end-month").value)
+        );
 
     })();
   </script>
