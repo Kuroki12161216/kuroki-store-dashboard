@@ -452,15 +452,15 @@
       async function updateKPI(store, dateStr) {
         if (!store || !dateStr) return;
         let month = dateStr.slice(0, 7); // "YYYY-MM"
-        month = month.replace("-","")
+        month = month.replace("-", "")
         console.log(month)
         // supabase から当月の KPI データを一括取得
         const { data, error } = await supabaseClient
           .from("店舗診断表")
-          .select("項目,月,店舗名")
+          .select("項目,月,店舗名,実績")
           .eq("店舗名", store)
-          // .eq("月", month);
-          console.log(data)
+          .eq("月", month);
+        console.log(data)
         if (error) {
           console.error("KPI取得エラー:", error);
           return;
@@ -470,7 +470,7 @@
         const salesPrev = await fetchPrevValue(store, month, "売上"); // 下記 D) 参照
 
         // 表示更新
-        const salesValue = salesRecord ? Number(salesRecord.値) : 0;
+        const salesValue = salesRecord ? Number(salesRecord.実績) : 0;
         kpiSales.textContent = salesValue.toLocaleString() + " 円";
 
         if (salesPrev !== null) {
@@ -492,9 +492,13 @@
       // --- C) 前月の値を取ってくるヘルパー関数 ---
       async function fetchPrevValue(store, month, item) {
         // month: "2025-06" → prevMonth: "2025-05"
-        const [y, m] = month.split("-").map(Number);
+        const y = Number(month.slice(0, 4));      // 先頭4文字を年に
+        const m = Number(month.slice(4, 6));      // 末尾2文字を月に
+        console.log(month)
         const prev = new Date(y, m - 2, 1);
-        const prevStr = prev.toISOString().slice(0, 7);
+        console.log(prev, y, m)
+
+        const prevStr = prev.toISOString().slice(0, 6);
 
         const { data, error } = await supabaseClient
           .from("店舗診断表")
