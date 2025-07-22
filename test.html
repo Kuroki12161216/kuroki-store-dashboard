@@ -450,20 +450,6 @@
 
 
       // --- B) KPI 更新 ---
-      // D) 前月値取得関数（すでにあるものをそのまま使います）
-      async function fetchPrevValue(store, month, item) {
-        const prev = new Date(month.slice(0, 4), Number(month.slice(4, 6)) - 2, 1);
-        const prevStr = prev.toISOString().slice(0, 7).replace('-', '');
-        const { data, error } = await supabaseClient
-          .from("店舗診断表")
-          .select("値")
-          .eq("店舗名", store)
-          .eq("月", prevStr)
-          .eq("項目", item)
-          .limit(1)
-          .single();
-        return error || !data ? null : Number(data.値);
-      }
 
       // KPI 定義リスト
       const kpiList = [
@@ -548,12 +534,9 @@
 
         const { data, error } = await supabaseClient
           .from("店舗診断表")
-          .select("項目")
+          .select("項目,月,店舗名,実績")
           .eq("店舗名", store)
-          .eq("月", prevStr)
-          .eq("項目", item)
-          .limit(1)
-          .single();
+          .eq("月", month);
         if (error || !data) return null;
         return Number(data.値);
       }
