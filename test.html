@@ -297,29 +297,30 @@
       </div>
     </div>
 
+
     <!-- ２段目：5列 -->
     <div class="kpi-row row-2">
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-labour-sales">
         <h3>人時売上高</h3>
         <div class="value">--</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-F">
         <h3>F</h3>
         <div class="value">--</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-D">
         <h3>D</h3>
         <div class="value">--</div>
         <div class="trend down"><span class="icon">▼</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-labour-cost">
         <h3>人件費</h3>
         <div class="value">-- 円</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-inspection-sheet">
         <h3>臨店シート</h3>
         <div class="value">--</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
@@ -328,27 +329,27 @@
 
     <!-- ３段目：5列 -->
     <div class="kpi-row row-3">
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-mtg-rate">
         <h3>店舗MTG参加率</h3>
         <div class="value">--%</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-cs-score">
         <h3>CSアンケート</h3>
         <div class="value">-- 点</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-interview-progress">
         <h3>面談進捗</h3>
         <div class="value">--%</div>
         <div class="trend down"><span class="icon">▼</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-referral-hires">
         <h3>PAリファラル採用</h3>
         <div class="value">-- 名</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" id="kpi-score">
         <h3>点数</h3>
         <div class="value">-- 点</div>
         <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
@@ -449,11 +450,44 @@
 
 
       // --- B) KPI 更新 ---
-      async function updateKPI(store, dateStr) {
+      // D) 前月値取得関数（すでにあるものをそのまま使います）
+      async function fetchPrevValue(store, month, item) {
+        const prev = new Date(month.slice(0, 4), Number(month.slice(4, 6)) - 2, 1);
+        const prevStr = prev.toISOString().slice(0, 7).replace('-', '');
+        const { data, error } = await supabaseClient
+          .from("店舗診断表")
+          .select("値")
+          .eq("店舗名", store)
+          .eq("月", prevStr)
+          .eq("項目", item)
+          .limit(1)
+          .single();
+        return error || !data ? null : Number(data.値);
+      }
+
+      // KPI 定義リスト
+      const kpiList = [
+        { id: 'kpi-sales', item: '売上', unit: '円', hasSuffix: true },
+        { id: 'kpi-unitprice', item: '単価', unit: '円', hasSuffix: true },
+        { id: 'kpi-labour-sales', item: '人時売上高', unit: '', hasSuffix: false },
+        { id: 'kpi-F', item: 'F', unit: '', hasSuffix: false },
+        { id: 'kpi-D', item: 'D', unit: '', hasSuffix: false },
+        { id: 'kpi-labour-cost', item: '人件費', unit: '円', hasSuffix: true },
+        { id: 'kpi-inspection-sheet', item: '臨店シート', unit: '', hasSuffix: false },
+        { id: 'kpi-mtg-rate', item: '店舗MTG参加率', unit: '%', hasSuffix: false },
+        { id: 'kpi-cs-score', item: 'CSアンケート', unit: '点', hasSuffix: false },
+        { id: 'kpi-interview-progress', item: '面談進捗', unit: '%', hasSuffix: false },
+        { id: 'kpi-referral-hires', item: 'PAリファラル採用', unit: '名', hasSuffix: false },
+        { id: 'kpi-score', item: '点数', unit: '点', hasSuffix: false },
+      ];
+
+
+      // 表示更新メイン
+      async function updateAllKPIs(store, dateStr) {
         if (!store || !dateStr) return;
         let month = dateStr.slice(0, 7); // "YYYY-MM"
         month = month.replace("-", "")
-        console.log(month)
+        // console.log(month)
         // supabase から当月の KPI データを一括取得
         const { data, error } = await supabaseClient
           .from("店舗診断表")
@@ -465,28 +499,40 @@
           console.error("KPI取得エラー:", error);
           return;
         }
-        // 例：売上と前月比の取得
-        const salesRecord = data.find(r => r.項目 === "売上");
-        const salesPrev = await fetchPrevValue(store, month, "売上"); // 下記 D) 参照
+        for (const { id, item, unit, hasSuffix } of kpiList) {
+          const card = document.getElementById(id);
+          if (!card) continue;
 
-        // 表示更新
-        const salesValue = salesRecord ? Number(salesRecord.実績) : 0;
-        kpiSales.textContent = salesValue.toLocaleString() + " 円";
+          const valueEl = card.querySelector('.value');
+          const trendEl = card.querySelector('.trend');
+          const iconEl = card.querySelector('.icon');
+          const percentEl = card.querySelector('.percent');
 
-        if (salesPrev !== null) {
-          const diff = salesValue - salesPrev;
-          const rate = salesPrev === 0 ? 0 : Math.round((diff / salesPrev) * 100);
-          if (rate >= 0) {
-            kpiSalesTrendIcon.textContent = "▲";
-            kpiSalesTrend.parentElement.classList.replace("down", "up");
-          } else {
-            kpiSalesTrendIcon.textContent = "▼";
-            kpiSalesTrend.parentElement.classList.replace("up", "down");
+          // 当月実績取得
+          const record = data.find(r => r.項目 === item);
+          const current = record ? Number(record.実績) : 0;
+
+          // 表示
+          valueEl.textContent = hasSuffix
+            ? current.toLocaleString() + ' ' + unit
+            : current.toLocaleString() + unit;
+
+          // 前月比
+          const prev = await fetchPrevValue(store, month, item);
+          if (prev !== null) {
+            const diff = current - prev;
+            const rate = prev === 0 ? 0 : Math.round(diff / prev * 100);
+
+            if (rate >= 0) {
+              iconEl.textContent = '▲';
+              trendEl.classList.replace('down', 'up');
+            } else {
+              iconEl.textContent = '▼';
+              trendEl.classList.replace('up', 'down');
+            }
+            percentEl.textContent = Math.abs(rate) + '%';
           }
-          kpiSalesTrend.textContent = Math.abs(rate) + "%";
         }
-
-        // 同様に「単価」「人時売上高」などのカードも data.find して更新してください
       }
 
       // --- C) 前月の値を取ってくるヘルパー関数 ---
@@ -604,20 +650,20 @@
       document.getElementById("end-month").value = yyyymm;
 
       // C) 初回 KPI・グラフ描画
-      await updateKPI(storeSelect.value, targetDateInput.value);
+      await updateAllKPIs(storeSelect.value, targetDateInput.value);
       await renderSalesChart(storeSelect.value,
         document.getElementById("start-month").value,
         document.getElementById("end-month").value);
 
       // D) イベント：変更時に再描画
       storeSelect.addEventListener("change", async () => {
-        await updateKPI(storeSelect.value, targetDateInput.value);
+        await updateAllKPIs(storeSelect.value, targetDateInput.value);
         await renderSalesChart(storeSelect.value,
           document.getElementById("start-month").value,
           document.getElementById("end-month").value);
       });
       targetDateInput.addEventListener("change", () =>
-        updateKPI(storeSelect.value, targetDateInput.value)
+        updateAllKPIs(storeSelect.value, targetDateInput.value)
       );
       document.getElementById("start-month")
         .addEventListener("change", () =>
