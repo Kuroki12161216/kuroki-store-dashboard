@@ -523,22 +523,30 @@
 
       // --- C) 前月の値を取ってくるヘルパー関数 ---
       async function fetchPrevValue(store, month, item) {
-        // month: "2025-06" → prevMonth: "2025-05"
-        const y = Number(month.slice(0, 4));      // 先頭4文字を年に
-        const m = Number(month.slice(4, 6));      // 末尾2文字を月に
-        console.log(month)
-        const prev = new Date(y, m - 2, 1);
-        console.log(prev, y, m)
+        // month: "2025-06" → clean: "202506"
+        const clean = month.replace(/[^\d]/g, '');          // 数字だけ残す
+        const y = Number(clean.slice(0, 4));                // 年
+        const m = Number(clean.slice(4, 6));                // 月（1‑12）
 
-        const prevStr = prev.toISOString().slice(0, 6);
+        // Date の月は 0‑11 なので (m‑1)‑1 = m‑2 が前月
+        const prev = new Date(y, m - 2, 1);                 // 前月 1 日
+        const prevY = prev.getFullYear();                   // 前月の年
+        const prevM = String(prev.getMonth() + 1).padStart(2, '0'); // 前月の月 (2 桁)
+
+        const prevStr = `${prevY}${prevM}`;                 // "YYYYMM" 形式 → 例: "202505"
+        console.log(prevStr);
 
         const { data, error } = await supabaseClient
           .from("店舗診断表")
           .select("項目,月,店舗名,実績")
           .eq("店舗名", store)
-          .eq("月", month);
+          .eq("月", prevStr);
+        console.log(data)
+        console.log(data.実績)
         if (error || !data) return null;
-        return Number(data.値);
+        const record = data.find(r => r.項目 === item);
+        const current = record ? Number(record.実績) : 0;
+        return current
       }
 
       /**
