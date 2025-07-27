@@ -53,9 +53,9 @@ let bootstrapModal = null;
 // ページ初期処理
 window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
+  await initMonthDropdown(); // <- move this before diagnostics
   await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
-  await initMonthDropdown();
 });
 
 // 店舗一覧をプルダウンに反映
