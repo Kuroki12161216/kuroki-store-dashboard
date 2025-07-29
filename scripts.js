@@ -44,6 +44,7 @@ let currentSortDir = "asc"; // 昇順 or 降順
 
 // 各THへの参照(ソート矢印を表示するため)
 const thItem = document.getElementById("thItem");
+const thStore = document.getElementById("thStore");
 const thTask = document.getElementById("thTask");
 const thDue = document.getElementById("thDue");
 const thOwner = document.getElementById("thOwner");
@@ -76,6 +77,20 @@ async function initStoreDropdowns() {
     storeSelect.appendChild(opt);
   });
   // タスク一覧のプルダウン
+  // storeNames.forEach((name) => {
+  //   const opt = document.createElement("option");
+  //   opt.value = name;
+  //   opt.textContent = name;
+  //   storeSelectTask.appendChild(opt);
+  // });
+  // 先頭に「全店舗」追加
+  if (!storeSelectTask.querySelector('option[value="all"]')) {
+    const allOpt = document.createElement("option");
+    allOpt.value = "all";
+    allOpt.textContent = "全店舗";
+    storeSelectTask.appendChild(allOpt);
+  }
+  // 各店舗
   storeNames.forEach((name) => {
     const opt = document.createElement("option");
     opt.value = name;
@@ -99,7 +114,7 @@ async function initMonthDropdown() {
     console.error("月一覧取得エラー:", error);
     return;
   }
-console.log(data)
+  console.log(data)
   // 月選択プルダウンの要素を取得
   const monthSelect = document.getElementById("monthSelect");
   if (!monthSelect) {
@@ -119,13 +134,13 @@ console.log(data)
     monthSelect.appendChild(opt);
     // monthSelectTask.appendChild(opt);
   });
-  distinctMonths.forEach((month) => {
-    const opt = document.createElement("option");
-    opt.value = month;
-    opt.textContent = month; // 画面に表示するテキスト
-    // monthSelect.appendChild(opt);
-    monthSelectTask.appendChild(opt);
-  });
+  // distinctMonths.forEach((month) => {
+  //   const opt = document.createElement("option");
+  //   opt.value = month;
+  //   opt.textContent = month; // 画面に表示するテキスト
+  //   // monthSelect.appendChild(opt);
+  //   monthSelectTask.appendChild(opt);
+  // });
 }
 
 // 月が変更されたときに呼び出される関数(例)
@@ -256,8 +271,8 @@ function createTruncatedParagraph(label, fullText, limit = 60) {
           <button type="button"
                   class="btn btn-sm btn-outline-primary toggle-btn"
                   onclick="event.stopPropagation(); expandText(this, '${encodeURIComponent(
-                    fullText
-                  )}', '${label}')">
+    fullText
+  )}', '${label}')">
             もっと読む
           </button>
         `;
@@ -274,8 +289,8 @@ window.expandText = function (btn, encodedFullText, label) {
           <button type="button"
                   class="btn btn-sm btn-outline-danger toggle-btn"
                   onclick="event.stopPropagation(); collapseText(this, '${encodeURIComponent(
-                    fullText
-                  )}', '${label}')">
+    fullText
+  )}', '${label}')">
             閉じる
           </button>
         `;
@@ -293,8 +308,8 @@ window.collapseText = function (btn, encodedFullText, label) {
           <button type="button"
                   class="btn btn-sm btn-outline-primary toggle-btn"
                   onclick="event.stopPropagation(); expandText(this, '${encodeURIComponent(
-                    fullText
-                  )}', '${label}')">
+    fullText
+  )}', '${label}')">
             もっと読む
           </button>
         `;
@@ -489,7 +504,23 @@ window.fetchAndDisplayTasks = async function () {
     console.error("タスク一覧取得エラー:", error);
     return;
   }
-  tasksDataGlobal = result;
+  // tasksDataGlobal = result;
+  // ▼ 店舗名を取得してタスク配列に付与
+  const diagIds = result.map(r => r.店舗診断表_id);
+  let storeMap = {};
+  if (diagIds.length) {
+    const { data: diag, error: dErr } = await supabase
+      .from("店舗診断表")
+      .select("id, 店舗名")
+      .in("id", diagIds);
+    if (!dErr) {
+      diag.forEach(d => { storeMap[d.id] = d.店舗名; });
+    }
+  }
+  tasksDataGlobal = result.map(r => ({
+    ...r,
+    店舗名: storeMap[r.店舗診断表_id] || ""
+  }));
   // 初期はソート指定なし → そのまま表示
   renderTasks();
   updateSortIndicators(null, null); // 矢印をリセット
@@ -498,9 +529,18 @@ window.fetchAndDisplayTasks = async function () {
 // タスクテーブルを描画
 function renderTasks() {
   tasksTableBody.innerHTML = "";
+  let overdueCount = 0;   // 期限切れ件数
 
   tasksDataGlobal.forEach((row) => {
     const tr = document.createElement("tr");
+    // 期限超過チェック
+    if (row.期限 && new Date(row.期限) < new Date()) {
+      tr.classList.add("table-danger"); // Bootstrap の赤背景
+      overdueCount++;
+    }
+
+    const storeTd = document.createElement("td");
+    storeTd.textContent = row.店舗名 || "";
 
     const itemTd = document.createElement("td");
     itemTd.textContent = row.項目 || "";
@@ -533,6 +573,7 @@ function renderTasks() {
     };
     operationTd.appendChild(deleteBtn);
 
+    tr.appendChild(storeTd);
     tr.appendChild(itemTd);
     tr.appendChild(taskTd);
     tr.appendChild(dueTd);
@@ -540,7 +581,9 @@ function renderTasks() {
     tr.appendChild(operationTd);
 
     tasksTableBody.appendChild(tr);
+
   });
+  updateOverdueBadge(overdueCount);
 }
 
 // テーブルのソートをトグル
@@ -574,6 +617,7 @@ window.sortTasks = function (column) {
 // ソート矢印の更新
 function updateSortIndicators(column, dir) {
   // 一度全部リセット
+  thStore.textContent = "店舗";
   thItem.textContent = "項目";
   thTask.textContent = "タスク";
   thDue.textContent = "期限";
@@ -582,8 +626,10 @@ function updateSortIndicators(column, dir) {
   if (!column) return;
   // ソート中の列だけ矢印を付ける
   let arrow = dir === "asc" ? " ▲" : " ▼";
-  if (column === "項目") {
+  if (column === "店舗名") {
     thItem.textContent += arrow;
+  } else if (column === "項目") {
+    thTask.textContent += arrow;
   } else if (column === "タスク") {
     thTask.textContent += arrow;
   } else if (column === "期限") {
@@ -655,7 +701,7 @@ export async function handleDrop(event) {
 export function parseCsvFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       const text = e.target.result;
       try {
         const lines = text.split(/\r?\n/);
@@ -676,12 +722,12 @@ export function parseCsvFile(file) {
           }
 
           // カラムを取得してトリム
-          const storeName   = cols[0].trim();
-          const month       = cols[1].trim();
-          const item        = cols[2].trim();
+          const storeName = cols[0].trim();
+          const month = cols[1].trim();
+          const item = cols[2].trim();
           const targetValue = cols[3].trim();
           const actualValue = cols[4].trim();
-          const diffValue   = cols[5].trim();
+          const diffValue = cols[5].trim();
 
           // 必要があれば数値への変換など
           // 例: parseFloat(targetValue), parseFloat(actualValue) など
@@ -700,7 +746,7 @@ export function parseCsvFile(file) {
         reject(err);
       }
     };
-    reader.onerror = function(e) {
+    reader.onerror = function (e) {
       reject(e);
     };
     reader.readAsText(file);
@@ -725,7 +771,7 @@ export async function insertDiagnostics(records) {
     normalized.push({
       ...r,
       '目標数値': r['目標数値'] === '' ? null : Number(r['目標数値']),
-      '実績'    : r['実績']     === '' ? null : Number(r['実績']),
+      '実績': r['実績'] === '' ? null : Number(r['実績']),
       // 仮説・ネクストアクションは文字列そのまま
     });
   }
