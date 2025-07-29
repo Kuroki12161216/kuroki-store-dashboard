@@ -1,7 +1,7 @@
 // キャッシュファイルの指定
 var CACHE_NAME = 'pwa-sample-caches';
 var urlsToCache = [
-	'/kuroki12161216.github.io/',
+	'/kuroki12161216.github.io/kuroki-store-dashboard/',
 ];
 
 // インストール処理
