@@ -60,10 +60,10 @@ window.addEventListener("DOMContentLoaded", async () => {
 });
 
 async function requestNotificationPermission() {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      // You can now use the Badging API
-    }
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    // You can now use the Badging API
+  }
 }
 
 // 店舗一覧をプルダウンに反映
@@ -406,6 +406,9 @@ window.addTaskFromModal = async function () {
     modalTaskDetail.value = "";
     modalTaskDue.value = "";
     modalTaskOwner.value = "";
+
+    // 追加後にテーブル再描画
+    fetchAndDisplayTasks();
   }
 };
 
@@ -592,6 +595,25 @@ function renderTasks() {
   });
   updateOverdueBadge(overdueCount);
 }
+
+// ==============================
+// 再読み込みボタン用
+// ==============================
+window.refreshTasks = async function () {
+  // ボタンを一瞬だけスピナー状態に
+  const btn = document.getElementById("refreshTasksBtn");
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+  }
+
+  await fetchAndDisplayTasks();
+
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 最新表示';
+  }
+};
 
 function updateOverdueBadge(num) {
   if (navigator.setAppBadge) {

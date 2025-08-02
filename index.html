@@ -171,6 +171,11 @@
               <label for="storeSelectTask" class="form-label">店舗選択:</label>
               <select id="storeSelectTask" class="form-select w-auto d-inline-block"
                 onchange="fetchAndDisplayTasks()"></select>
+              <!-- ★ 追加：再読み込みボタン -->
+              <button id="refreshTasksBtn" class="btn btn-outline-secondary ms-2" onclick="refreshTasks()">
+                <i class="bi bi-arrow-repeat"></i> 最新表示
+              </button>
+
             </div>
 
             <!-- タスク一覧表 -->
