@@ -59,6 +59,13 @@ window.addEventListener("DOMContentLoaded", async () => {
   await fetchAndDisplayTasks();
 });
 
+async function requestNotificationPermission() {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      // You can now use the Badging API
+    }
+}
+
 // 店舗一覧をプルダウンに反映
 async function initStoreDropdowns() {
   // 「店舗診断表」テーブルから distinct な店舗名一覧を取得
@@ -594,13 +601,6 @@ function updateOverdueBadge(num) {
   }
 }
 
-async function requestNotificationPermission() {
-    const permission = await Notification.requestPermission();
-    if (permission === 'granted') {
-      // You can now use the Badging API
-    }
-}
-
 // テーブルのソートをトグル
 window.sortTasks = function (column) {
   // 同じ列を連続クリックなら昇降をトグル、それ以外なら昇順に
@@ -815,3 +815,4 @@ export async function insertDiagnostics(records) {
 window.handleDragEnter = handleDragEnter;
 window.handleDragOver = handleDragOver;
 window.handleDrop = handleDrop;
+window.requestNotificationPermission = requestNotificationPermission;
