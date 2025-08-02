@@ -586,6 +586,21 @@ function renderTasks() {
   updateOverdueBadge(overdueCount);
 }
 
+function updateOverdueBadge(num) {
+  if (navigator.setAppBadge) {
+    navigator.setAppBadge(num).catch(err => console.error("バッジ設定エラー:", err));
+  } else {
+    console.warn("Badging APIはこのブラウザではサポートされていません。");
+  }
+}
+
+async function requestNotificationPermission() {
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      // You can now use the Badging API
+    }
+}
+
 // テーブルのソートをトグル
 window.sortTasks = function (column) {
   // 同じ列を連続クリックなら昇降をトグル、それ以外なら昇順に
