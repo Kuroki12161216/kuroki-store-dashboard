@@ -57,6 +57,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   await initMonthDropdown(); // <- move this before diagnostics
   await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
+  // ▼ 追加：タスクテーブルを購読
+  subscribeTasksRealtime();
 });
 
 async function requestNotificationPermission() {
@@ -614,6 +616,37 @@ window.refreshTasks = async function () {
     btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> 最新表示';
   }
 };
+
+// ---------------- Realtime 購読 ----------------
+function subscribeTasksRealtime() {
+  // すでに購読済みなら何もしない（多重登録防止）
+  if (window.__tasksChannel) return;
+
+  const channel = supabase.channel('tasks-realtime')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',            // INSERT | UPDATE | DELETE すべて
+        schema: 'public',
+        table: 'タスクテーブル'
+      },
+      payload => {
+        console.log('[Realtime] 変化を検知:', payload.eventType, payload.new || payload.old);
+        // 一番シンプル：毎回まるごと再取得
+        fetchAndDisplayTasks();
+        // --- 高速化したい場合はここで tasksDataGlobal を直接編集して renderTasks() でもOK ---
+      }
+    )
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') {
+        console.log('タスクテーブルのリアルタイム購読を開始しました');
+      }
+    });
+
+  // 後で参照できるように保持
+  window.__tasksChannel = channel;
+}
+
 
 function updateOverdueBadge(num) {
   if (navigator.setAppBadge) {
