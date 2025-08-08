@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>店舗診断表 & タスク管理</title>
+  <title>店舗診断表 & タスク管理（設定付き）</title>
+
   <link rel="stylesheet" type="text/css" href="styles.css">
   <style>
     a.btn-link.nav-link {
@@ -13,6 +14,7 @@
       padding: 0.5rem 1rem;
     }
   </style>
+
   <!-- Bootstrap CDN -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
@@ -22,7 +24,6 @@
 
   <link rel="shortcut icon" href="./static/icons/favicon.ico">
   <link rel="manifest" href="manifest.json">
-
 </head>
 
 <body>
@@ -47,10 +48,9 @@
             <li class="nav-item">
               <button class="btn btn-link nav-link" onclick="showTaskSection(); closeOffcanvas();">タスク一覧</button>
             </li>
-            <!-- 新規追加：CSVアップロードへの遷移 -->
+            <!-- ★ 新規：設定 -->
             <li class="nav-item">
-              <button class="btn btn-link nav-link"
-                onclick="showCsvUploadSection(); closeOffcanvas();">CSVアップロード</button>
+              <button class="btn btn-link nav-link" onclick="showSettingsSection(); closeOffcanvas();">設定</button>
             </li>
             <li class="nav-item">
               <a class="btn btn-link nav-link" href="dashboard.html">ダッシュボード</a>
@@ -63,7 +63,7 @@
 
   <div class="container-fluid">
     <div class="row">
-      <!-- デスクトップ用：サイドバー（md以上で表示） -->
+      <!-- デスクトップ用：サイドバー -->
       <nav class="col-md-2 d-none d-md-block bg-light sidebar">
         <div class="position-sticky pt-3">
           <ul class="nav flex-column">
@@ -73,9 +73,9 @@
             <li class="nav-item">
               <button class="btn btn-link nav-link" onclick="showTaskSection()">タスク一覧</button>
             </li>
-            <!-- 新規追加：CSVアップロードへの遷移 -->
+            <!-- ★ 新規：設定 -->
             <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showCsvUploadSection()">CSVアップロード</button>
+              <button class="btn btn-link nav-link" onclick="showSettingsSection()">設定</button>
             </li>
             <li class="nav-item">
               <a class="btn btn-link nav-link" href="dashboard.html">ダッシュボード</a>
@@ -83,54 +83,49 @@
           </ul>
         </div>
       </nav>
+
       <!-- メインコンテンツ -->
       <main class="col-md-10 ms-sm-auto px-md-4">
         <div class="container mt-3">
-          <!-- 店舗診断表画面 -->
+
+          <!-- 店舗診断表 -->
           <section id="diagnosticSection" style="display:block;">
             <div class="sticky-controls">
               <h1 class="mb-3">店舗診断表</h1>
-              <!-- 店舗選択プルダウン -->
+
+              <!-- 店舗選択 -->
               <div class="mb-3 d-inline-block me-3">
                 <label for="storeSelect" class="form-label">店舗選択:</label>
                 <select id="storeSelect" class="form-select w-auto d-inline-block"
-                  onchange="fetchAndDisplayDiagnostics()">
-                  <!-- JSで店舗一覧を追加 -->
-                </select>
+                  onchange="fetchAndDisplayDiagnostics()"></select>
               </div>
-              <!-- 月選択プルダウン -->
+
+              <!-- 月選択 -->
               <div class="mb-3 d-inline-block">
                 <label for="monthSelect" class="form-label">月選択:</label>
                 <select id="monthSelect" class="form-select w-auto d-inline-block"
-                  onchange="fetchAndDisplayDiagnostics()">
-                  <!-- JSで月一覧を追加 -->
-                </select>
+                  onchange="fetchAndDisplayDiagnostics()"></select>
               </div>
             </div>
-            <!-- カード一覧を表示するコンテナ -->
-            <div id="diagnosticsCardContainer" class="row row-cols-1 row-cols-md-3 g-4 mt-3">
-              <!-- JSでカードを追加 -->
-            </div>
+
+            <!-- カード一覧 -->
+            <div id="diagnosticsCardContainer" class="row row-cols-1 row-cols-md-3 g-4 mt-3"></div>
           </section>
 
-          <!-- タスク一覧画面 -->
+          <!-- タスク一覧 -->
           <section id="taskSection" style="display:none;">
             <h1 class="mb-3">タスク一覧</h1>
-            <button onclick="requestNotificationPermission()">通知の許可ボタン</button>
-            <!-- ▼ stickyにしたいプルダウン群をラップ ▼ -->
 
-
-            <!-- タスク追加フォーム -->
+            <!-- 追加フォーム -->
             <div class="border rounded p-3 mb-3 mt-3">
               <h2 class="h5 mb-3">タスク追加</h2>
               <div class="mb-2">
                 <label for="taskAddStoreSelect" class="form-label">店舗名</label>
                 <select id="taskAddStoreSelect" class="form-select w-auto d-inline-block">
                   <option value="">店舗を選択</option>
-                  <!-- JSで店舗一覧を追加 -->
                 </select>
               </div>
-              <!-- ▼▼▼ 項目を選択式に変更 ▼▼▼ -->
+
               <div class="mb-2">
                 <label for="taskAddItemInput" class="form-label">項目</label>
                 <select id="taskAddItemInput" class="form-select w-auto d-inline-block">
@@ -148,11 +143,10 @@
                   <option value="PAリファラル採用">PAリファラル採用</option>
                 </select>
               </div>
-              <!-- ▲▲▲ 項目を選択式に変更 ▲▲▲ -->
+
               <div class="mb-2">
                 <label for="taskAddDetailInput" class="form-label">タスク</label>
-                <input type="text" class="form-control w-auto d-inline-block" id="taskAddDetailInput"
-                  placeholder="例: 棚割り変更">
+                <input type="text" class="form-control w-auto d-inline-block" id="taskAddDetailInput" placeholder="例: 棚割り変更">
               </div>
               <div class="mb-2">
                 <label for="taskAddDueInput" class="form-label">期限</label>
@@ -160,22 +154,18 @@
               </div>
               <div class="mb-2">
                 <label for="taskAddOwnerInput" class="form-label">責任者</label>
-                <input type="text" class="form-control w-auto d-inline-block" id="taskAddOwnerInput"
-                  placeholder="例: 佐藤">
+                <input type="text" class="form-control w-auto d-inline-block" id="taskAddOwnerInput" placeholder="例: 佐藤">
               </div>
               <button class="btn btn-primary" onclick="addTaskFromList()">追加</button>
             </div>
 
-            <!-- 店舗選択プルダウン -->
+            <!-- 店舗選択 -->
             <div class="mb-3 d-inline-block me-3">
               <label for="storeSelectTask" class="form-label">店舗選択:</label>
-              <select id="storeSelectTask" class="form-select w-auto d-inline-block"
-                onchange="fetchAndDisplayTasks()"></select>
-              <!-- ★ 追加：再読み込みボタン -->
+              <select id="storeSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayTasks()"></select>
               <button id="refreshTasksBtn" class="btn btn-outline-secondary ms-2" onclick="refreshTasks()">
                 <i class="bi bi-arrow-repeat"></i> 最新表示
               </button>
-
             </div>
 
             <!-- タスク一覧表 -->
@@ -191,20 +181,33 @@
                     <th>操作</th>
                   </tr>
                 </thead>
-                <tbody>
-                  <!-- JSで行追加 -->
-                </tbody>
+                <tbody></tbody>
               </table>
             </div>
           </section>
 
-          <!-- 新規追加: CSVアップロード画面 -->
-          <section id="csvUploadSection" style="display:none;">
-            <h1 class="mb-3">CSVアップロード</h1>
-            <p>下記エリアにCSVファイルをドラッグ＆ドロップしてください。</p>
-            <div id="csvDropArea" class="border border-primary rounded p-5 text-center"
-              ondragenter="handleDragEnter(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
-              ここにCSVファイルをドロップ
+          <!-- ★ 新規：設定 -->
+          <section id="settingsSection" style="display:none;">
+            <h1 class="mb-3">設定</h1>
+
+            <!-- 通知 -->
+            <div class="border rounded p-3 mb-4">
+              <h2 class="h5 mb-3">通知</h2>
+              <button class="btn btn-primary" onclick="requestNotificationPermission()">通知の許可</button>
+              <p class="text-muted mt-2 mb-0">ブラウザの通知許可ダイアログが表示されます。</p>
+            </div>
+
+            <!-- CSVアップロード -->
+            <div class="border rounded p-3">
+              <h2 class="h5 mb-3">CSVアップロード</h2>
+              <p>下記エリアにCSVファイルをドラッグ＆ドロップしてください。</p>
+              <div id="csvDropArea"
+                   class="border border-primary rounded p-5 text-center"
+                   ondragenter="handleDragEnter(event)"
+                   ondragover="handleDragOver(event)"
+                   ondrop="handleDrop(event)">
+                ここにCSVファイルをドロップ
+              </div>
             </div>
           </section>
 
@@ -223,7 +226,7 @@
         </div>
         <div class="modal-body">
           <input type="hidden" id="modalDiagnosticId">
-          <!-- 仮説・ネクストアクション -->
+
           <div class="mb-3">
             <label for="modalHypothesisInput" class="form-label fw-bold">仮説:</label>
             <textarea id="modalHypothesisInput" class="form-control" rows="3" placeholder="仮説を入力または確認"></textarea>
@@ -233,12 +236,10 @@
             <textarea id="modalNextActionInput" class="form-control" rows="3" placeholder="次のアクションを入力または確認"></textarea>
           </div>
           <div class="d-grid">
-            <button type="button" class="btn btn-primary mb-3" onclick="updateDiagnostic()">
-              仮説・ネクストアクションを更新
-            </button>
+            <button type="button" class="btn btn-primary mb-3" onclick="updateDiagnostic()">仮説・ネクストアクションを更新</button>
           </div>
           <hr />
-          <!-- タスク送信フォーム -->
+
           <h5 class="mb-3">タスク送信</h5>
           <div class="mb-2">
             <label for="modalTaskItem" class="form-label">項目</label>
@@ -270,9 +271,7 @@
             <input type="text" class="form-control" id="modalTaskOwner" placeholder="例：山田">
           </div>
           <div class="d-grid">
-            <button type="button" class="btn btn-success" onclick="addTaskFromModal()">
-              タスク送信
-            </button>
+            <button type="button" class="btn btn-success" onclick="addTaskFromModal()">タスク送信</button>
           </div>
         </div>
         <div class="modal-footer">
@@ -282,55 +281,41 @@
     </div>
   </div>
 
-  <!-- SupabaseのJS SDKをCDNから読み込み (ご利用の環境に合わせて設定) -->
-  <!--
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js/dist/umd/supabase.min.js"></script>
-    <script>
-      const supabase = Supabase.createClient('https://xxxxxx.supabase.co', 'public-anon-key');
-    </script>
-  -->
-
   <!-- メインのスクリプト -->
   <script type="module" src="scripts.js"></script>
 
+  <!-- 画面切替 & SW登録（必要最小限のインライン） -->
   <script>
-    // ※以下の関数は scripts.js などに統合してもOKです
-    // ページ表示切替
     function showDiagnosticSection() {
       document.getElementById('diagnosticSection').style.display = 'block';
       document.getElementById('taskSection').style.display = 'none';
-      document.getElementById('csvUploadSection').style.display = 'none';
+      document.getElementById('settingsSection').style.display = 'none';
     }
     function showTaskSection() {
       document.getElementById('diagnosticSection').style.display = 'none';
       document.getElementById('taskSection').style.display = 'block';
-      document.getElementById('csvUploadSection').style.display = 'none';
+      document.getElementById('settingsSection').style.display = 'none';
     }
-    function showCsvUploadSection() {
+    function showSettingsSection() {
       document.getElementById('diagnosticSection').style.display = 'none';
       document.getElementById('taskSection').style.display = 'none';
-      document.getElementById('csvUploadSection').style.display = 'block';
+      document.getElementById('settingsSection').style.display = 'block';
     }
 
-    // Offcanvasを閉じるためのヘルパー関数（モバイル用）
     function closeOffcanvas() {
-      const offcanvasElement = document.getElementById('offcanvasNavbar');
-      const offcanvasInstance = bootstrap.Offcanvas.getInstance(offcanvasElement);
-      if (offcanvasInstance) {
-        offcanvasInstance.hide();
-      }
+      const el = document.getElementById('offcanvasNavbar');
+      const inst = bootstrap.Offcanvas.getInstance(el);
+      if (inst) inst.hide();
     }
 
-    // service workerの登録関係
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service_worker.js').then(function (registration) {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      }).catch(function (err) {
-        console.log('ServiceWorker registration failed: ', err);
+      navigator.serviceWorker.register('service_worker.js').then(reg => {
+        console.log('ServiceWorker registration successful with scope:', reg.scope);
+      }).catch(err => {
+        console.log('ServiceWorker registration failed:', err);
       });
     }
   </script>
-
 </body>
 
 </html>
