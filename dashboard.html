@@ -22,7 +22,6 @@
 
     /* ===== Top section ===== */
     .top-section{display:grid;grid-template-columns:1fr;grid-gap:var(--gap);margin-bottom:24px}
-    /* PCで5列にし、ヘッダーは3カラム分を占有 */
     @media (min-width: 1024px){
       .top-section{grid-template-columns:repeat(5,1fr)}
       .top-section .header-card{grid-column:span 3}
@@ -30,7 +29,6 @@
       .top-section #kpi-unitprice{grid-column:span 1}
     }
 
-    /* ===== Header controls ===== */
     .header-card{background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
     .header-controls{display:grid;grid-template-columns:1fr;gap:10px}
     .header-card select,.header-card input[type="month"]{padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fafafa;min-height:40px}
@@ -46,8 +44,6 @@
     .kpi-card .trend.up{color:#31b057}
     .kpi-card .trend.down{color:#e12d39}
     .kpi-card .trend .icon{margin-right:4px;font-size:14px}
-
-    /* 編集/スコア/目標 */
     .edit-btn{position:absolute;top:8px;right:8px;border:none;background:transparent;cursor:pointer;font-size:18px;color:#98a2b3;padding:6px;border-radius:8px}
     .edit-btn:hover{background:#f2f4f7;color:#2b3a67}
     .mini-score{position:absolute;top:8px;right:44px;background:#eef3ff;color:#2b3a67;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
@@ -55,18 +51,9 @@
 
     /* ===== KPI grid responsiveness ===== */
     .kpi-row{display:grid;grid-gap:var(--gap)}
-    /* スマホ：1列固定 */
-    @media (max-width: 767.98px){
-      .kpi-row{grid-template-columns:1fr}
-    }
-    /* タブレット：5列 */
-    @media (min-width:768px) and (max-width:1023.98px){
-      .kpi-row{grid-template-columns:repeat(5,1fr)}
-    }
-    /* PC：5列 */
-    @media (min-width:1024px){
-      .kpi-row{grid-template-columns:repeat(5,1fr)}
-    }
+    @media (max-width: 767.98px){ .kpi-row{grid-template-columns:1fr} }
+    @media (min-width:768px) and (max-width:1023.98px){ .kpi-row{grid-template-columns:repeat(2,1fr)} }
+    @media (min-width:1024px){ .kpi-row{grid-template-columns:repeat(5,1fr)} }
 
     /* ===== Chart toolbar ===== */
     .chart-toolbar{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:12px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:calc(var(--header-h));z-index:50}
@@ -91,19 +78,25 @@
     .rank-badge{display:inline-block;min-width:28px;text-align:center;border-radius:999px;padding:2px 8px;background:#f0f3ff}
     .gold{background:#fff7d6}.silver{background:#f2f4f7}.bronze{background:#ffe9d9}
 
-    /* ===== Modal (scrollable + close button) ===== */
+    /* ===== Modal (two-line title, scrollable, safe spacing) ===== */
     .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:1000}
     .modal[hidden]{display:none}
     .modal .content{
-      position:relative;
       background:#fff;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);
-      padding:16px;min-width:320px;max-width:92vw;
-      max-height:92vh;               /* 画面に収まる高さ */
-      overflow-y:auto;               /* 中身をスクロール */
-      -webkit-overflow-scrolling:touch;
+      padding:16px;min-width:320px;max-width:92vw;max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;
     }
-    .modal .content h5{font-size:16px;margin-bottom:8px;color:#2b3a67}
-    .form-row{margin-top:8px}
+    .modal-head{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      position:sticky;top:0;background:#fff;margin:-16px -16px 12px -16px;padding:12px 16px;border-bottom:1px solid #eee;
+      border-top-left-radius:12px;border-top-right-radius:12px
+    }
+    .title-wrap{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:calc(100% - 48px)}
+    .title-line.store{font-weight:700;font-size:16px;color:#2b3a67;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .title-line.sub{font-size:13px;color:#667085;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .close-btn{width:36px;height:36px;border:none;border-radius:10px;background:#f2f4f7;color:#333;font-size:20px;line-height:1;cursor:pointer;flex:0 0 auto}
+    .close-btn:hover{background:#e5e7eb}
+
+    .form-row{margin-top:10px}
     .form-row label{display:block;font-size:12px;color:#555;margin-bottom:4px}
     .form-row input,.form-row textarea{width:100%;padding:10px;border:1px solid #d0d5dd;border-radius:10px;background:#fafafa}
     .form-row input:focus,.form-row textarea:focus{outline:none;border-color:#2b3a67;background:#fff}
@@ -112,13 +105,6 @@
     .btn.cancel{background:#f2f4f7}
     .btn.save{background:#2b3a67;color:#fff}
     .hint{font-size:11px;color:#667085;margin-top:6px}
-    /* ×ボタン */
-    .close-btn{
-      position:absolute;top:8px;right:8px;
-      width:36px;height:36px;border:none;border-radius:10px;
-      background:#f2f4f7;color:#333;font-size:20px;line-height:1;cursor:pointer
-    }
-    .close-btn:hover{background:#e5e7eb}
 
     @media (max-width: 767.98px){
       .container{padding:12px}
@@ -126,11 +112,8 @@
       .edit-btn{top:6px;right:6px}
       .mini-score{top:6px;right:40px}
       .target-badge{right:6px;bottom:6px;font-size:10px}
-      /* モバイルはフルスクリーンでもスクロール可能に */
-      .modal .content{
-        width:100vw;height:100dvh;max-width:none;border-radius:0;padding:14px;
-        overflow-y:auto;
-      }
+      .modal .content{width:100vw;height:100dvh;max-width:none;border-radius:0;padding:16px}
+      .modal-head{margin:-16px -16px 12px -16px;padding:12px 16px;border-radius:0}
     }
   </style>
 </head>
@@ -230,7 +213,7 @@
       <h4>6店舗 点数ランキング（当月 / 110点満点）</h4>
       <div class="rank-wrap">
         <table class="rank" id="score-ranking-table">
-          <thead><tr><th>ランキング</th><th>店舗名</th><th>点数</th></tr></thead>
+          <thead><tr><th>#</th><th>店舗名</th><th>点数</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
@@ -260,14 +243,22 @@
       <div class="chart-card"><canvas id="labourSalesChart"></canvas></div>
     </div>
 
-    <!-- 数値編集モーダル -->
+    <!-- 数値編集モーダル（2行タイトル） -->
     <div id="edit-modal" class="modal" hidden>
       <div class="content">
-        <button class="close-btn" id="edit-close" aria-label="閉じる">×</button>
-        <h5 id="edit-title">編集</h5>
-        <div class="form-row"><label>店舗</label><input id="edit-store" type="text" readonly></div>
-        <div class="form-row"><label>月（YYYYMM）</label><input id="edit-month" type="text" readonly></div>
-        <div class="form-row"><label>項目</label><input id="edit-item" type="text" readonly></div>
+        <div class="modal-head">
+          <div class="title-wrap">
+            <div class="title-line store" id="edit-title-store"></div>
+            <div class="title-line sub"   id="edit-title-sub"></div>
+          </div>
+          <button class="close-btn" id="edit-close" aria-label="閉じる">×</button>
+        </div>
+
+        <!-- 内部で参照するhidden -->
+        <input id="edit-store" type="hidden">
+        <input id="edit-month" type="hidden">
+        <input id="edit-item" type="hidden">
+
         <div class="form-row"><label>目標数値</label><input id="edit-target" type="number" step="any" placeholder="例）100000"></div>
         <div class="form-row"><label>実績</label><input id="edit-actual" type="number" step="any" placeholder="例）95000"></div>
         <div class="hint">空欄保存＝未入力として扱います。</div>
@@ -278,28 +269,33 @@
       </div>
     </div>
 
-    <!-- 仮説・ネクスト＆タスク送信モーダル -->
+    <!-- 仮説・ネクスト＆タスク送信モーダル（2行タイトル） -->
     <div id="detail-modal" class="modal" hidden>
       <div class="content">
-        <button class="close-btn" id="detail-close" aria-label="閉じる">×</button>
-        <h5 id="detail-title">詳細</h5>
+        <div class="modal-head">
+          <div class="title-wrap">
+            <div class="title-line store" id="detail-title-store"></div>
+            <div class="title-line sub"   id="detail-title-sub"></div>
+          </div>
+          <button class="close-btn" id="detail-close" aria-label="閉じる">×</button>
+        </div>
+
+        <!-- 内部用hidden（UI上は非表示） -->
         <input type="hidden" id="detail-id">
-        <div class="form-row"><label>店舗</label><input id="detail-store" type="text" readonly></div>
-        <div class="form-row"><label>月（YYYYMM）</label><input id="detail-month" type="text" readonly></div>
-        <div class="form-row"><label>項目</label><input id="detail-item" type="text" readonly></div>
+        <input type="hidden" id="detail-store">
+        <input type="hidden" id="detail-month">
+        <input type="hidden" id="detail-item">
 
         <div class="form-row"><label>仮説</label><textarea id="detail-hypo" rows="3" placeholder="仮説を入力"></textarea></div>
         <div class="form-row"><label>ネクストアクション</label><textarea id="detail-next" rows="3" placeholder="次にやることを入力"></textarea></div>
         <div class="actions"><button class="btn save" id="btn-detail-save">仮説・ネクストを保存</button></div>
 
         <hr style="margin:12px 0;">
-        <h5 style="margin-bottom:8px;color:#2b3a67">タスク送信</h5>
-        <div class="form-row"><label>項目</label><input id="task-item" type="text" readonly></div>
+        <input type="hidden" id="task-item">
         <div class="form-row"><label>タスク</label><input id="task-detail" type="text" placeholder="例：棚割り見直し"></div>
         <div class="form-row"><label>期限</label><input id="task-due" type="date"></div>
         <div class="form-row"><label>責任者</label><input id="task-owner" type="text" placeholder="例：佐藤"></div>
         <div class="actions">
-          <button class="btn cancel" id="btn-detail-cancel">閉じる</button>
           <button class="btn save" id="btn-detail-send">タスク送信</button>
         </div>
       </div>
@@ -318,9 +314,10 @@
       const toggleYoy = document.getElementById("toggle-yoy");
       const rankTableBody = document.querySelector("#score-ranking-table tbody");
 
-      // 数値編集モーダル
+      // 数値編集モーダル DOM
       const modal = document.getElementById('edit-modal');
-      const editTitle = document.getElementById('edit-title');
+      const editTitleStore = document.getElementById('edit-title-store');
+      const editTitleSub   = document.getElementById('edit-title-sub');
       const editStore = document.getElementById('edit-store');
       const editMonth = document.getElementById('edit-month');
       const editItem  = document.getElementById('edit-item');
@@ -330,17 +327,17 @@
       const btnSave   = document.getElementById('btn-save');
       const editClose = document.getElementById('edit-close');
 
-      // 詳細（仮説/ネクスト & タスク）
+      // 詳細（仮説/ネクスト & タスク）モーダル DOM
       const detailModal = document.getElementById('detail-modal');
       const detailId = document.getElementById('detail-id');
-      const detailTitle = document.getElementById('detail-title');
+      const detailTitleStore = document.getElementById('detail-title-store');
+      const detailTitleSub   = document.getElementById('detail-title-sub');
       const detailStore = document.getElementById('detail-store');
       const detailMonth = document.getElementById('detail-month');
       const detailItem  = document.getElementById('detail-item');
       const detailHypo  = document.getElementById('detail-hypo');
       const detailNext  = document.getElementById('detail-next');
       const btnDetailSave   = document.getElementById('btn-detail-save');
-      const btnDetailCancel = document.getElementById('btn-detail-cancel');
       const btnDetailSend   = document.getElementById('btn-detail-send');
       const detailClose     = document.getElementById('detail-close');
       const taskItem   = document.getElementById('task-item');
@@ -465,9 +462,9 @@
       // 採点（10/0点）
       const LOWER_IS_BETTER = new Set(['F','D','人件費']);
       function binaryScore(item, t, a){
-        if(a==null) return 10;       // 実績なし＝10点
-        if(Number(a)===0) return 0;  // 実績0＝0点
-        if(t==null) return 10;       // 目標なし＝10点
+        if(a==null) return 10;
+        if(Number(a)===0) return 0;
+        if(t==null) return 10;
         if(LOWER_IS_BETTER.has(item)) return Number(a) <= Number(t) ? 10 : 0;
         return Number(a) >= Number(t) ? 10 : 0;
       }
@@ -490,7 +487,7 @@
             pair.a!=null?Number(pair.a):null
           );
         });
-        return total; // 0..110
+        return total;
       }
 
       async function renderScoreRanking(month){
@@ -540,7 +537,7 @@
         function asPercentInt(v){
           if (v == null) return null;
           const n = Number(v);
-          const pct = Math.abs(n) <= 1 ? n * 100 : n; // 0-1入力も%に
+          const pct = Math.abs(n) <= 1 ? n * 100 : n;
           return Math.round(pct);
         }
         function roundIfNeeded(item, n){
@@ -554,11 +551,9 @@
           const iconEl = card.querySelector('.icon');
           const percentEl = card.querySelector('.percent');
 
-          // 目標バッジ
           let targetBadge = card.querySelector('.target-badge');
           if(!targetBadge){ targetBadge=document.createElement('span'); targetBadge.className='target-badge'; card.appendChild(targetBadge); }
 
-          // ミニスコア（総合は非表示）
           let mini = card.querySelector('.mini-score');
           if(!mini && item!=='点数'){ mini=document.createElement('span'); mini.className='mini-score'; card.appendChild(mini); }
 
@@ -566,7 +561,6 @@
           const target = rec && rec.目標数値!=null ? Number(rec.目標数値) : null;
           let current = rec && rec.実績!=null ? Number(rec.実績) : null;
 
-          // 値の表示
           if(item==='点数'){
             const totalScore = await computeScoreByItems(store, month);
             valueEl.textContent = totalScore!=null ? `${totalScore} / 110点` : `-- / 110点`;
@@ -590,7 +584,6 @@
             valueEl.textContent = text;
           }
 
-          // 目標バッジ
           if(item==='点数'){
             targetBadge.textContent = '目標：110点';
           }else if(percentItems.has(item)){
@@ -603,13 +596,11 @@
             targetBadge.textContent = target!=null ? `目標：${Number(target).toLocaleString()}${unitMap[item]||''}` : '目標：--';
           }
 
-          // ミニスコア（10/0）
           if(item!=='点数' && mini){
             const s = binaryScore(item, target, current);
             mini.textContent = `${s}点`;
           }
 
-          // 前月比
           const prev = await fetchPrevValue(store, month, item);
           if(item!=='点数' && prev !== null && current!=null){
             const diff = current - prev;
@@ -637,17 +628,22 @@
 
       // ---- 仮説/ネクスト＆タスク ----
       function openDetailModal(item){
-        if(item === '点数') return; // 総合点は対象外
+        if(item === '点数') return;
         const store = storeSelect.value;
-        const month = targetDateInput.value.slice(0,7).replace("-","");
-        detailTitle.textContent = `詳細：${store} / ${month} / ${item}`;
+        const monthRaw = targetDateInput.value.slice(0,7).replace("-","");
+        const monthLabel = `${monthRaw.slice(0,4)}/${monthRaw.slice(4,6)}`;
+
+        // 2行タイトルに設定
+        detailTitleStore.textContent = store;                   // 1行目：店舗名
+        detailTitleSub.textContent   = `${monthLabel} / ${item}`; // 2行目：月 / 項目
+
         detailStore.value = store;
-        detailMonth.value = month;
+        detailMonth.value = monthRaw;
         detailItem.value  = item;
         taskItem.value    = item;
         taskDetail.value = ''; taskDue.value = ''; taskOwner.value = '';
 
-        findOrCreateDiagnostic(store, month, item).then(row=>{
+        findOrCreateDiagnostic(store, monthRaw, item).then(row=>{
           if(row){
             detailId.value = row.id;
             detailHypo.value = row.仮説 ?? '';
@@ -675,7 +671,6 @@
         return (res.data && res.data[0]) ? res.data[0] : null;
       }
       function closeDetail(){ detailModal.hidden = true; }
-      btnDetailCancel.addEventListener('click', closeDetail);
       detailClose.addEventListener('click', closeDetail);
       detailModal.addEventListener('click', (e)=>{ if(e.target===detailModal) closeDetail(); });
 
@@ -711,12 +706,18 @@
       function openEditModal(item, e){
         if(e) e.stopPropagation();
         const store = storeSelect.value;
-        const month = targetDateInput.value.slice(0,7).replace("-","");
-        editTitle.textContent = `編集：${store} / ${month} / ${item}`;
-        editStore.value = store; editMonth.value = month; editItem.value = item;
+        const monthRaw = targetDateInput.value.slice(0,7).replace("-","");
+        const monthLabel = `${monthRaw.slice(0,4)}/${monthRaw.slice(4,6)}`;
+
+        // 2行タイトルに設定
+        editTitleStore.textContent = store;                    // 1行目：店舗名
+        editTitleSub.textContent   = `${monthLabel} / ${item}`; // 2行目：月 / 項目
+
+        editStore.value = store; editMonth.value = monthRaw; editItem.value = item;
         editTarget.value=''; editActual.value=''; modal.hidden=false;
+
         supabaseClient.from('店舗診断表')
-          .select('目標数値,実績').eq('店舗名',store).eq('月',month).eq('項目',item).limit(1)
+          .select('目標数値,実績').eq('店舗名',store).eq('月',monthRaw).eq('項目',item).limit(1)
           .then(({data,error})=>{ if(!error && data && data[0]){ if(data[0].目標数値!=null) editTarget.value=Number(data[0].目標数値); if(data[0].実績!=null) editActual.value=Number(data[0].実績);} });
       }
       function closeEditModal(){ modal.hidden=true; }

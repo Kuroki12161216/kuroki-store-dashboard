@@ -13,6 +13,72 @@
       display: block;
       padding: 0.5rem 1rem;
     }
+
+    /* === Tasks: Mobile/Tablet swipe rows === */
+    @media (max-width: 991.98px) {
+      #tasksTable td.d-lg-table-cell,
+      #tasksTable th.d-lg-table-cell {
+        display: none !important; /* SP/Tabは「店舗」「項目」「操作」列を隠す */
+      }
+      #tasksTable td.mobile-swipe-cell {
+        padding: 0 !important;
+        border-top: none;
+      }
+      .swipe-row {
+        position: relative;
+        overflow: hidden;
+        touch-action: pan-y;
+        background: #fff;
+      }
+      .swipe-content {
+        position: relative;
+        padding: 12px 16px;
+        transition: transform 0.2s ease;
+        will-change: transform;
+        background: #fff;
+        z-index: 2;
+      }
+      .swipe-reveal-left,
+      .swipe-reveal-right {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        z-index: 1;
+      }
+      .swipe-reveal-left {
+        left: 0;
+        width: 110px;              /* 右スワイプで露出（削除） */
+        justify-content: center;
+        background: #fff0f0;
+        border-right: 1px solid #f1c0c0;
+      }
+      .swipe-reveal-right {
+        right: 0;
+        width: 200px;              /* 左スワイプで露出（店舗/項目） */
+        padding: 0 12px;
+        justify-content: flex-start;
+        background: #f8f9fa;
+        border-left: 1px solid #e9ecef;
+      }
+      .swipe-meta {
+        margin-top: 4px;
+        display: flex;
+        gap: 16px;
+        font-size: 0.9rem;
+        color: #6c757d;
+      }
+      .swipe-label {
+        font-weight: 600;
+        margin-right: 4px;
+      }
+    }
+
+    /* 通知バッジ色 */
+    .badge-perm-default { background: #6c757d; }
+    .badge-perm-granted { background: #198754; }
+    .badge-perm-denied  { background: #dc3545; }
   </style>
 
   <!-- Bootstrap CDN -->
@@ -48,7 +114,6 @@
             <li class="nav-item">
               <button class="btn btn-link nav-link" onclick="showTaskSection(); closeOffcanvas();">タスク一覧</button>
             </li>
-            <!-- ★ 新規：設定 -->
             <li class="nav-item">
               <button class="btn btn-link nav-link" onclick="showSettingsSection(); closeOffcanvas();">設定</button>
             </li>
@@ -73,7 +138,6 @@
             <li class="nav-item">
               <button class="btn btn-link nav-link" onclick="showTaskSection()">タスク一覧</button>
             </li>
-            <!-- ★ 新規：設定 -->
             <li class="nav-item">
               <button class="btn btn-link nav-link" onclick="showSettingsSection()">設定</button>
             </li>
@@ -93,14 +157,12 @@
             <div class="sticky-controls">
               <h1 class="mb-3">店舗診断表</h1>
 
-              <!-- 店舗選択 -->
               <div class="mb-3 d-inline-block me-3">
                 <label for="storeSelect" class="form-label">店舗選択:</label>
                 <select id="storeSelect" class="form-select w-auto d-inline-block"
                   onchange="fetchAndDisplayDiagnostics()"></select>
               </div>
 
-              <!-- 月選択 -->
               <div class="mb-3 d-inline-block">
                 <label for="monthSelect" class="form-label">月選択:</label>
                 <select id="monthSelect" class="form-select w-auto d-inline-block"
@@ -108,7 +170,6 @@
               </div>
             </div>
 
-            <!-- カード一覧 -->
             <div id="diagnosticsCardContainer" class="row row-cols-1 row-cols-md-3 g-4 mt-3"></div>
           </section>
 
@@ -146,8 +207,7 @@
 
               <div class="mb-2">
                 <label for="taskAddDetailInput" class="form-label">タスク</label>
-                <input type="text" class="form-control w-auto d-inline-block" id="taskAddDetailInput"
-                  placeholder="例: 棚割り変更">
+                <input type="text" class="form-control w-auto d-inline-block" id="taskAddDetailInput" placeholder="例: 棚割り変更">
               </div>
               <div class="mb-2">
                 <label for="taskAddDueInput" class="form-label">期限</label>
@@ -155,8 +215,7 @@
               </div>
               <div class="mb-2">
                 <label for="taskAddOwnerInput" class="form-label">責任者</label>
-                <input type="text" class="form-control w-auto d-inline-block" id="taskAddOwnerInput"
-                  placeholder="例: 佐藤">
+                <input type="text" class="form-control w-auto d-inline-block" id="taskAddOwnerInput" placeholder="例: 佐藤">
               </div>
               <button class="btn btn-primary" onclick="addTaskFromList()">追加</button>
             </div>
@@ -164,8 +223,7 @@
             <!-- 店舗選択 -->
             <div class="mb-3 d-inline-block me-3">
               <label for="storeSelectTask" class="form-label">店舗選択:</label>
-              <select id="storeSelectTask" class="form-select w-auto d-inline-block"
-                onchange="fetchAndDisplayTasks()"></select>
+              <select id="storeSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayTasks()"></select>
               <button id="refreshTasksBtn" class="btn btn-outline-secondary ms-2" onclick="refreshTasks()">
                 <i class="bi bi-arrow-repeat"></i> 最新表示
               </button>
@@ -176,12 +234,12 @@
               <table id="tasksTable" class="table table-bordered table-striped align-middle">
                 <thead class="table-light">
                   <tr>
-                    <th id="thStore" class="sort-header" onclick="sortTasks('店舗名')">店舗</th>
-                    <th id="thItem" class="sort-header" onclick="sortTasks('項目')">項目</th>
-                    <th id="thTask" class="sort-header" onclick="sortTasks('タスク')">タスク</th>
-                    <th id="thDue" class="sort-header" onclick="sortTasks('期限')">期限</th>
+                    <th id="thStore" class="sort-header d-none d-lg-table-cell" onclick="sortTasks('店舗名')">店舗</th>
+                    <th id="thItem"  class="sort-header d-none d-lg-table-cell" onclick="sortTasks('項目')">項目</th>
+                    <th id="thTask"  class="sort-header" onclick="sortTasks('タスク')">タスク</th>
+                    <th id="thDue"   class="sort-header" onclick="sortTasks('期限')">期限</th>
                     <th id="thOwner" class="sort-header" onclick="sortTasks('責任者')">責任者</th>
-                    <th>操作</th>
+                    <th class="d-none d-lg-table-cell">操作</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -189,23 +247,16 @@
             </div>
           </section>
 
-          <!-- ★ 新規：設定 -->
+          <!-- 設定 -->
           <section id="settingsSection" style="display:none;">
             <h1 class="mb-3">設定</h1>
-
             <div class="border rounded p-3 mb-4">
               <h2 class="h5 mb-3">通知</h2>
-
               <div class="d-flex align-items-center gap-3">
-                <button id="btnNotif" class="btn btn-primary" onclick="requestNotificationPermission()">
-                  通知の許可
-                </button>
-                <span id="notificationStatus" class="badge rounded-pill bg-secondary">未判定</span>
+                <button id="btnNotif" class="btn btn-primary" onclick="requestNotificationPermission()">通知の許可</button>
+                <span id="notificationStatus" class="badge rounded-pill badge-perm-default">未判定</span>
               </div>
-
-              <p class="text-muted mt-2 mb-0">
-                ブラウザの通知許可状況に応じてバッジとボタンが切り替わります。
-              </p>
+              <p class="text-muted mt-2 mb-0">ブラウザの通知許可状況に応じてバッジとボタンが切り替わります。</p>
             </div>
 
             <!-- CSVアップロード -->
@@ -224,7 +275,7 @@
     </div>
   </div>
 
-  <!-- 仮説＆ネクストアクション & タスク送信用モーダル -->
+  <!-- モーダル -->
   <div class="modal fade" id="diagnosticModal" tabindex="-1" aria-labelledby="diagnosticModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -289,41 +340,8 @@
     </div>
   </div>
 
-  <!-- メインのスクリプト -->
+  <!-- スクリプト -->
   <script type="module" src="scripts.js"></script>
-
-  <!-- 画面切替 & SW登録（必要最小限のインライン） -->
-  <script>
-    function showDiagnosticSection() {
-      document.getElementById('diagnosticSection').style.display = 'block';
-      document.getElementById('taskSection').style.display = 'none';
-      document.getElementById('settingsSection').style.display = 'none';
-    }
-    function showTaskSection() {
-      document.getElementById('diagnosticSection').style.display = 'none';
-      document.getElementById('taskSection').style.display = 'block';
-      document.getElementById('settingsSection').style.display = 'none';
-    }
-    function showSettingsSection() {
-      document.getElementById('diagnosticSection').style.display = 'none';
-      document.getElementById('taskSection').style.display = 'none';
-      document.getElementById('settingsSection').style.display = 'block';
-    }
-
-    function closeOffcanvas() {
-      const el = document.getElementById('offcanvasNavbar');
-      const inst = bootstrap.Offcanvas.getInstance(el);
-      if (inst) inst.hide();
-    }
-
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service_worker.js').then(reg => {
-        console.log('ServiceWorker registration successful with scope:', reg.scope);
-      }).catch(err => {
-        console.log('ServiceWorker registration failed:', err);
-      });
-    }
-  </script>
 </body>
 
 </html>
