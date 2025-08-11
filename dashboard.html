@@ -1,96 +1,527 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="utf-8">
   <title>マグロと炉端成る：ダッシュボード</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@1.35.6/dist/umd/supabase.min.js"></script>
   <style>
-    *{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%;font-family:"Yu Gothic UI","Hiragino Kaku Gothic Pro",Meiryo,sans-serif;background:#f4f6fa;color:#333}
-    a{text-decoration:none;color:inherit}
-    .container{max-width:1200px;margin:0 auto;padding:16px}
-
-    .top-section{display:grid;grid-gap:16px;grid-template-columns:1fr;margin-bottom:24px}
-    @media(min-width:768px){
-      .top-section{grid-template-columns:repeat(5,1fr)}
-      .top-section .header-card{grid-column:span 3}
-      .top-section #kpi-sales{grid-column:span 1}
-      .top-section #kpi-unitprice{grid-column:span 1}
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
     }
 
-    .header-card{background:#fff;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.1);padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
-    .header-card select,.header-card input[type="date"],.header-card input[type="month"]{padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:14px;background:#fafafa}
+    html,
+    body {
+      height: 100%;
+      font-family: "Yu Gothic UI", "Hiragino Kaku Gothic Pro", Meiryo, sans-serif;
+      background: #f4f6fa;
+      color: #333
+    }
 
-    .kpi-card{background:#fff;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,.1);padding:16px;display:flex;flex-direction:column;justify-content:space-between;position:relative;cursor:pointer}
-    .kpi-card h3{font-size:14px;color:#666;margin-bottom:8px}
-    .kpi-card .value{font-size:28px;font-weight:bold;color:#2b3a67}
-    .kpi-card .trend{display:flex;align-items:center;margin-top:8px;font-size:12px}
-    .kpi-card .trend.up{color:#31b057}
-    .kpi-card .trend.down{color:#e12d39}
-    .kpi-card .trend .icon{margin-right:4px;font-size:14px}
+    a {
+      text-decoration: none;
+      color: inherit
+    }
 
-    .edit-btn{position:absolute;top:8px;right:8px;border:none;background:transparent;cursor:pointer;font-size:16px;color:#98a2b3}
-    .edit-btn:hover{color:#2b3a67}
-    .mini-score{position:absolute;top:8px;right:36px;background:#eef3ff;color:#2b3a67;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
-    .target-badge{position:absolute;right:8px;bottom:8px;background:#f9fafb;border:1px solid #e5e7eb;color:#667085;padding:2px 8px;border-radius:999px;font-size:11px}
+    :root {
+      --gap: 16px;
+      --header-h: 56px;
+    }
 
-    .kpi-row{display:grid;grid-gap:16px}
-    .kpi-row.row-2,.kpi-row.row-3{grid-template-columns:repeat(5,1fr)}
-    @media(max-width:767px){.kpi-row{grid-template-columns:1fr !important}}
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px
+    }
 
-    .chart-toolbar{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:12px 16px;margin-bottom:10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .chart-toolbar .group{display:flex;gap:8px;align-items:center}
-    .chart-toolbar label{font-size:13px;color:#555}
-    .chart-toolbar select{padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fafafa}
+    /* ヘッダー */
+    header {
+      background-color: #2b3a67;
+      color: #fff
+    }
 
-    .chart-section{display:grid;grid-template-columns:1fr;grid-gap:24px;margin-bottom:24px}
-    .chart-card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;position:relative;height:0;padding-bottom:56.25%}
-    .chart-card canvas{position:absolute;top:16px;left:16px;right:16px;bottom:16px;width:calc(100% - 32px);height:calc(100% - 32px)}
+    header a {
+      color: white;
+      text-decoration: none;
+      font-size: 20px;
+      font-weight: bold;
+      display: block;
+      padding: 12px 24px
+    }
 
-    .panel{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:24px}
-    .panel h4{margin-bottom:10px}
-    table.rank{width:100%;border-collapse:collapse}
-    table.rank th,table.rank td{padding:8px 10px;border-bottom:1px solid #eee;text-align:left;font-size:14px}
-    table.rank th{color:#666}
-    .rank-badge{display:inline-block;min-width:28px;text-align:center;border-radius:999px;padding:2px 8px;background:#f0f3ff}
-    .gold{background:#fff7d6}.silver{background:#f2f4f7}.bronze{background:#ffe9d9}
+    /* 上段：レイアウト */
+    .top-section {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-gap: var(--gap);
+      margin-bottom: 24px
+    }
 
-    .lower-section{display:grid;grid-template-columns:1fr;grid-gap:24px}
-    @media(min-width:768px){.lower-section{grid-template-columns:repeat(2,1fr)}}
-    .lower-card{background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;min-height:200px;color:#666}
-    .lower-card h4{margin-bottom:8px;font-size:16px}
-    .muted{color:#888;font-size:12px}
+    @media(min-width:768px) {
+      .top-section {
+        grid-template-columns: repeat(5, 1fr)
+      }
 
-    /* モーダル */
-    .modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:1000}
-    .modal[hidden]{display:none}
-    .modal .content{background:#fff;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);padding:16px;min-width:320px;max-width:92vw}
-    .modal .content h5{font-size:16px;margin-bottom:8px;color:#2b3a67}
-    .form-row{margin-top:8px}
-    .form-row label{display:block;font-size:12px;color:#555;margin-bottom:4px}
-    .form-row input,.form-row textarea{width:100%;padding:8px;border:1px solid #d0d5dd;border-radius:8px;background:#fafafa}
-    .form-row input:focus,.form-row textarea:focus{outline:none;border-color:#2b3a67;background:#fff}
-    .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
-    .btn{padding:8px 12px;border:none;border-radius:10px;cursor:pointer}
-    .btn.cancel{background:#f2f4f7}
-    .btn.save{background:#2b3a67;color:#fff}
-    .hint{font-size:11px;color:#667085;margin-top:6px}
+      .top-section .header-card {
+        grid-column: span 3
+      }
+
+      .top-section #kpi-sales {
+        grid-column: span 1
+      }
+
+      .top-section #kpi-unitprice {
+        grid-column: span 1
+      }
+    }
+
+    /* ヘッダーカード */
+    .header-card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, .08);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between
+    }
+
+    .header-controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap
+    }
+
+    .header-card select,
+    .header-card input[type="month"] {
+      padding: 10px 12px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fafafa;
+      min-height: 40px
+    }
+
+    /* KPIカード */
+    .kpi-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      cursor: pointer;
+      min-height: 110px
+    }
+
+    .kpi-card h3 {
+      font-size: clamp(12px, 2.2vw, 14px);
+      color: #666;
+      margin-bottom: 8px
+    }
+
+    .kpi-card .value {
+      font-size: clamp(22px, 5.5vw, 28px);
+      font-weight: 700;
+      color: #2b3a67;
+      line-height: 1.2
+    }
+
+    .kpi-card .trend {
+      display: flex;
+      align-items: center;
+      margin-top: 8px;
+      font-size: 12px
+    }
+
+    .kpi-card .trend.up {
+      color: #31b057
+    }
+
+    .kpi-card .trend.down {
+      color: #e12d39
+    }
+
+    .kpi-card .trend .icon {
+      margin-right: 4px;
+      font-size: 14px
+    }
+
+    /* 編集ボタン/ミニスコア/目標 */
+    .edit-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 18px;
+      color: #98a2b3;
+      padding: 6px;
+      border-radius: 8px
+    }
+
+    .edit-btn:hover {
+      background: #f2f4f7;
+      color: #2b3a67
+    }
+
+    .mini-score {
+      position: absolute;
+      top: 8px;
+      right: 44px;
+      background: #eef3ff;
+      color: #2b3a67;
+      padding: 3px 9px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700
+    }
+
+    .target-badge {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      color: #667085;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 11px
+    }
+
+    /* KPIグリッドを可変カラム化 */
+    /* KPIグリッド：スマホは1列、タブレット以上は最大5列 */
+    .kpi-row {
+      display: grid;
+      grid-gap: var(--gap);
+    }
+
+    /* スマホ（〜767px）：1列固定 */
+    @media (max-width: 767px) {
+      .kpi-row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* タブレット以上（768px〜）：最大5列で見やすく */
+    @media (min-width: 768px) {
+      .kpi-row {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+
+    /* チャート周り */
+    .chart-toolbar {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+      position: sticky;
+      top: calc(var(--header-h));
+      z-index: 50
+    }
+
+    .chart-toolbar .group {
+      display: flex;
+      gap: 8px;
+      align-items: center
+    }
+
+    .chart-toolbar label {
+      font-size: 13px;
+      color: #555
+    }
+
+    .chart-toolbar select {
+      padding: 10px 12px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: #fafafa;
+      min-height: 40px
+    }
+
+    .chart-section {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-gap: 24px;
+      margin-bottom: 24px
+    }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+      position: relative
+    }
+
+    .chart-card canvas {
+      position: absolute;
+      inset: 16px
+    }
+
+    @media(min-width:768px) {
+      .chart-card {
+        height: 0;
+        padding-bottom: 56.25%
+      }
+    }
+
+    @media(max-width:767px) {
+      .chart-card {
+        height: 260px
+      }
+    }
+
+    /* ランキング */
+    .panel {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+      padding: 16px;
+      margin-bottom: 24px
+    }
+
+    .panel h4 {
+      margin-bottom: 10px
+    }
+
+    .rank-wrap {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch
+    }
+
+    table.rank {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 520px
+    }
+
+    table.rank th,
+    table.rank td {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+      font-size: 14px;
+      white-space: nowrap
+    }
+
+    table.rank th {
+      color: #666
+    }
+
+    .rank-badge {
+      display: inline-block;
+      min-width: 28px;
+      text-align: center;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: #f0f3ff
+    }
+
+    .gold {
+      background: #fff7d6
+    }
+
+    .silver {
+      background: #f2f4f7
+    }
+
+    .bronze {
+      background: #ffe9d9
+    }
+
+    /* 下段汎用カード */
+    .lower-section {
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-gap: 24px
+    }
+
+    @media(min-width:768px) {
+      .lower-section {
+        grid-template-columns: repeat(2, 1fr)
+      }
+    }
+
+    .lower-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+      padding: 16px;
+      min-height: 200px;
+      color: #666
+    }
+
+    .lower-card h4 {
+      margin-bottom: 8px;
+      font-size: 16px
+    }
+
+    .muted {
+      color: #888;
+      font-size: 12px
+    }
+
+    /* モーダル：スマホは全画面化 */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000
+    }
+
+    .modal[hidden] {
+      display: none
+    }
+
+    .modal .content {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
+      padding: 16px;
+      min-width: 320px;
+      max-width: 92vw
+    }
+
+    .modal .content h5 {
+      font-size: 16px;
+      margin-bottom: 8px;
+      color: #2b3a67
+    }
+
+    .form-row {
+      margin-top: 8px
+    }
+
+    .form-row label {
+      display: block;
+      font-size: 12px;
+      color: #555;
+      margin-bottom: 4px
+    }
+
+    .form-row input,
+    .form-row textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 10px;
+      background: #fafafa
+    }
+
+    .form-row input:focus,
+    .form-row textarea:focus {
+      outline: none;
+      border-color: #2b3a67;
+      background: #fff
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 12px
+    }
+
+    .btn {
+      padding: 10px 14px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer
+    }
+
+    .btn.cancel {
+      background: #f2f4f7
+    }
+
+    .btn.save {
+      background: #2b3a67;
+      color: #fff
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #667085;
+      margin-top: 6px
+    }
+
+    @media(max-width:767px) {
+      .container {
+        padding: 12px
+      }
+
+      .header-controls {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px
+      }
+
+      .kpi-card {
+        padding: 14px;
+        min-height: 104px
+      }
+
+      .edit-btn {
+        top: 6px;
+        right: 6px
+      }
+
+      .mini-score {
+        top: 6px;
+        right: 40px
+      }
+
+      .target-badge {
+        right: 6px;
+        bottom: 6px;
+        font-size: 10px
+      }
+
+      .panel {
+        padding: 12px
+      }
+
+      .modal .content {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        border-radius: 0;
+        padding: 14px
+      }
+    }
   </style>
 </head>
+
 <body>
-  <header style="background-color:#2b3a67;color:white;padding:12px 24px;">
-    <a href="index.html" style="color:white;text-decoration:none;font-size:20px;font-weight:bold;">店舗診断表</a>
+  <header>
+    <a href="index.html">店舗診断表</a>
   </header>
 
   <div class="container">
     <!-- 上段：ヘッダー + KPI -->
     <div class="top-section">
       <div class="header-card">
-        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div class="header-controls">
           <div>
             <label for="store-select">店舗（KPI）：</label>
-            <select id="store-select"><option>マグロと炉端成る</option></select>
+            <select id="store-select">
+              <option>マグロと炉端成る</option>
+            </select>
           </div>
           <div>
             <label for="target-date">日付：</label>
@@ -111,7 +542,7 @@
       </div>
     </div>
 
-    <!-- 2段目：5列 -->
+    <!-- 2段目 -->
     <div class="kpi-row row-2">
       <div class="kpi-card" id="kpi-labour-sales">
         <h3>人時売上高</h3>
@@ -140,7 +571,7 @@
       </div>
     </div>
 
-    <!-- 3段目：5列 -->
+    <!-- 3段目 -->
     <div class="kpi-row row-3">
       <div class="kpi-card" id="kpi-mtg-rate">
         <h3>店舗MTG参加率</h3>
@@ -172,10 +603,18 @@
     <!-- ランキング -->
     <div class="panel" id="score-ranking">
       <h4>6店舗 点数ランキング（当月 / 110点満点）</h4>
-      <table class="rank" id="score-ranking-table">
-        <thead><tr><th>#</th><th>店舗名</th><th>点数</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="rank-wrap">
+        <table class="rank" id="score-ranking-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>店舗名</th>
+              <th>点数</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- グラフツールバー -->
@@ -209,10 +648,13 @@
         <div class="form-row"><label>店舗</label><input id="edit-store" type="text" readonly></div>
         <div class="form-row"><label>月（YYYYMM）</label><input id="edit-month" type="text" readonly></div>
         <div class="form-row"><label>項目</label><input id="edit-item" type="text" readonly></div>
-        <div class="form-row"><label>目標数値</label><input id="edit-target" type="number" step="any" placeholder="例）100000"></div>
-        <div class="form-row"><label>実績</label><input id="edit-actual" type="number" step="any" placeholder="例）95000"></div>
+        <div class="form-row"><label>目標数値</label><input id="edit-target" type="number" step="any"
+            placeholder="例）100000"></div>
+        <div class="form-row"><label>実績</label><input id="edit-actual" type="number" step="any" placeholder="例）95000">
+        </div>
         <div class="hint">空欄保存＝未入力として扱います。</div>
-        <div class="actions"><button class="btn cancel" id="btn-cancel">キャンセル</button><button class="btn save" id="btn-save">保存</button></div>
+        <div class="actions"><button class="btn cancel" id="btn-cancel">キャンセル</button><button class="btn save"
+            id="btn-save">保存</button></div>
       </div>
     </div>
 
@@ -226,7 +668,8 @@
         <div class="form-row"><label>項目</label><input id="detail-item" type="text" readonly></div>
 
         <div class="form-row"><label>仮説</label><textarea id="detail-hypo" rows="3" placeholder="仮説を入力"></textarea></div>
-        <div class="form-row"><label>ネクストアクション</label><textarea id="detail-next" rows="3" placeholder="次にやることを入力"></textarea></div>
+        <div class="form-row"><label>ネクストアクション</label><textarea id="detail-next" rows="3"
+            placeholder="次にやることを入力"></textarea></div>
         <div class="actions"><button class="btn save" id="btn-detail-save">仮説・ネクストを保存</button></div>
 
         <hr style="margin:12px 0;">
@@ -242,461 +685,477 @@
       </div>
     </div>
 
-  <script>
-    (async () => {
-      const SUPABASE_URL = "https://djgylzypyunbcetvquom.supabase.co";
-      const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZ3lsenlweXVuYmNldHZxdW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4MTk3MjgsImV4cCI6MjA1NjM5NTcyOH0.tRwiVkMiCIvONpjyAJAt3FZ2iUIy6ihaAiHMtZ3bFI0";
-      const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <script>
+      (async () => {
+        const SUPABASE_URL = "https://djgylzypyunbcetvquom.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZ3lsenlweXVuYmNldHZxdW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4MTk3MjgsImV4cCI6MjA1NjM5NTcyOH0.tRwiVkMiCIvONpjyAJAt3FZ2iUIy6ihaAiHMtZ3bFI0";
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      const storeSelect = document.getElementById("store-select");
-      const chartStoreSelect = document.getElementById("chart-store-select");
-      const targetDateInput = document.getElementById("target-date");
-      const fiscalYearSelect = document.getElementById("fiscal-year");
-      const toggleYoy = document.getElementById("toggle-yoy");
-      const rankTableBody = document.querySelector("#score-ranking-table tbody");
+        const storeSelect = document.getElementById("store-select");
+        const chartStoreSelect = document.getElementById("chart-store-select");
+        const targetDateInput = document.getElementById("target-date");
+        const fiscalYearSelect = document.getElementById("fiscal-year");
+        const toggleYoy = document.getElementById("toggle-yoy");
+        const rankTableBody = document.querySelector("#score-ranking-table tbody");
 
-      // 既存モーダル（数値）
-      const modal = document.getElementById('edit-modal');
-      const editTitle = document.getElementById('edit-title');
-      const editStore = document.getElementById('edit-store');
-      const editMonth = document.getElementById('edit-month');
-      const editItem  = document.getElementById('edit-item');
-      const editTarget= document.getElementById('edit-target');
-      const editActual= document.getElementById('edit-actual');
-      const btnCancel = document.getElementById('btn-cancel');
-      const btnSave   = document.getElementById('btn-save');
+        // 数値編集モーダル
+        const modal = document.getElementById('edit-modal');
+        const editTitle = document.getElementById('edit-title');
+        const editStore = document.getElementById('edit-store');
+        const editMonth = document.getElementById('edit-month');
+        const editItem = document.getElementById('edit-item');
+        const editTarget = document.getElementById('edit-target');
+        const editActual = document.getElementById('edit-actual');
+        const btnCancel = document.getElementById('btn-cancel');
+        const btnSave = document.getElementById('btn-save');
 
-      // 新モーダル（仮説/ネクスト & タスク）
-      const detailModal = document.getElementById('detail-modal');
-      const detailId = document.getElementById('detail-id');
-      const detailTitle = document.getElementById('detail-title');
-      const detailStore = document.getElementById('detail-store');
-      const detailMonth = document.getElementById('detail-month');
-      const detailItem  = document.getElementById('detail-item');
-      const detailHypo  = document.getElementById('detail-hypo');
-      const detailNext  = document.getElementById('detail-next');
-      const btnDetailSave   = document.getElementById('btn-detail-save');
-      const btnDetailCancel = document.getElementById('btn-detail-cancel');
-      const btnDetailSend   = document.getElementById('btn-detail-send');
-      const taskItem   = document.getElementById('task-item');
-      const taskDetail = document.getElementById('task-detail');
-      const taskDue    = document.getElementById('task-due');
-      const taskOwner  = document.getElementById('task-owner');
+        // 詳細（仮説/ネクスト & タスク）
+        const detailModal = document.getElementById('detail-modal');
+        const detailId = document.getElementById('detail-id');
+        const detailTitle = document.getElementById('detail-title');
+        const detailStore = document.getElementById('detail-store');
+        const detailMonth = document.getElementById('detail-month');
+        const detailItem = document.getElementById('detail-item');
+        const detailHypo = document.getElementById('detail-hypo');
+        const detailNext = document.getElementById('detail-next');
+        const btnDetailSave = document.getElementById('btn-detail-save');
+        const btnDetailCancel = document.getElementById('btn-detail-cancel');
+        const btnDetailSend = document.getElementById('btn-detail-send');
+        const taskItem = document.getElementById('task-item');
+        const taskDetail = document.getElementById('task-detail');
+        const taskDue = document.getElementById('task-due');
+        const taskOwner = document.getElementById('task-owner');
 
-      const percentItems = new Set(['F','D','人件費','店舗MTG参加率','面談進捗']);
-      const yenItems = new Set(['売上','単価','人時売上高']);
-      const unitMap = {
-        '売上':'円','単価':'円','人時売上高':'円',
-        'F':'%','D':'%','人件費':'%','店舗MTG参加率':'%','面談進捗':'%',
-        '臨店シート':'','CSアンケート':'点','PAリファラル採用':'名','点数':'点'
-      };
-      const kpiList = [
-        { id: 'kpi-sales', item: '売上' },
-        { id: 'kpi-unitprice', item: '単価' },
-        { id: 'kpi-labour-sales', item: '人時売上高' },
-        { id: 'kpi-F', item: 'F' },
-        { id: 'kpi-D', item: 'D' },
-        { id: 'kpi-labour-cost', item: '人件費' },
-        { id: 'kpi-inspection-sheet', item: '臨店シート' },
-        { id: 'kpi-mtg-rate', item: '店舗MTG参加率' },
-        { id: 'kpi-cs-score', item: 'CSアンケート' },
-        { id: 'kpi-interview-progress', item: '面談進捗' },
-        { id: 'kpi-referral-hires', item: 'PAリファラル採用' },
-        { id: 'kpi-score', item: '点数' },
-      ];
+        // 表示ルール
+        const percentItems = new Set(['F', 'D', '人件費', '店舗MTG参加率', '面談進捗']);
+        const yenItems = new Set(['売上', '単価', '人時売上高']);
+        const unitMap = {
+          '売上': '円', '単価': '円', '人時売上高': '円',
+          'F': '%', 'D': '%', '人件費': '%', '店舗MTG参加率': '%', '面談進捗': '%',
+          '臨店シート': '', 'CSアンケート': '点', 'PAリファラル採用': '名', '点数': '点'
+        };
+        const kpiList = [
+          { id: 'kpi-sales', item: '売上' },
+          { id: 'kpi-unitprice', item: '単価' },
+          { id: 'kpi-labour-sales', item: '人時売上高' },
+          { id: 'kpi-F', item: 'F' },
+          { id: 'kpi-D', item: 'D' },
+          { id: 'kpi-labour-cost', item: '人件費' },
+          { id: 'kpi-inspection-sheet', item: '臨店シート' },
+          { id: 'kpi-mtg-rate', item: '店舗MTG参加率' },
+          { id: 'kpi-cs-score', item: 'CSアンケート' },
+          { id: 'kpi-interview-progress', item: '面談進捗' },
+          { id: 'kpi-referral-hires', item: 'PAリファラル採用' },
+          { id: 'kpi-score', item: '点数' },
+        ];
 
-      const ctxSales = document.getElementById("salesChart").getContext("2d");
-      const ctxUnit  = document.getElementById("unitPriceChart").getContext("2d");
-      const ctxLabour= document.getElementById("labourSalesChart").getContext("2d");
-      let salesChart=null, unitChart=null, labourChart=null;
+        // Chart
+        const ctxSales = document.getElementById("salesChart").getContext("2d");
+        const ctxUnit = document.getElementById("unitPriceChart").getContext("2d");
+        const ctxLabour = document.getElementById("labourSalesChart").getContext("2d");
+        let salesChart = null, unitChart = null, labourChart = null;
 
-      const toYYYYMM = (d) => `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}`;
-      const labelYYYYMM = (yyyymm) => `${yyyymm.slice(0,4)}/${yyyymm.slice(4,6)}`;
-      const formatYen = (v) => '¥ ' + Number(v ?? 0).toLocaleString();
-      const currentFYStartYear = (() => { const t=new Date(), y=t.getFullYear(), m=t.getMonth()+1; return (m>=4)?y:(y-1); })();
+        // Utils
+        const toYYYYMM = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+        const labelYYYYMM = (yyyymm) => `${yyyymm.slice(0, 4)}/${yyyymm.slice(4, 6)}`;
+        const formatYen = (v) => '¥ ' + Number(v ?? 0).toLocaleString();
+        const currentFYStartYear = (() => { const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1; return (m >= 4) ? y : (y - 1); })();
 
-      function getFiscalMonths(fyStartYear){
-        const arr=[]; for(let i=0;i<12;i++){ arr.push(toYYYYMM(new Date(fyStartYear,3+i,1))); } return arr;
-      }
-
-      async function getUniqueStores(){
-        const { data, error } = await supabaseClient.from("店舗診断表").select("店舗名").order("店舗名",{ascending:true});
-        if(error){ console.error("店舗名取得エラー:", error); return []; }
-        return Array.from(new Set((data||[]).map(r=>r.店舗名)));
-      }
-      async function populateStoreSelects(){
-        const stores = await getUniqueStores();
-        storeSelect.innerHTML=""; chartStoreSelect.innerHTML="";
-        stores.forEach(name=>{
-          const o1=document.createElement("option"); o1.value=o1.textContent=name; storeSelect.appendChild(o1);
-          const o2=document.createElement("option"); o2.value=o2.textContent=name; chartStoreSelect.appendChild(o2);
-        });
-      }
-      async function populateFiscalYears(store){
-        const { data, error } = await supabaseClient.from("店舗診断表").select("月").eq("店舗名", store).eq("項目","売上").order("月",{ascending:true});
-        if(error){ console.error("期抽出エラー:", error); return; }
-        const months=(data||[]).map(r=>String(r.月));
-        const fySet=new Set(); months.forEach(m=>{ const y=+m.slice(0,4), mm=+m.slice(4,6); fySet.add((mm>=4)?y:(y-1)); });
-        const fyList=Array.from(fySet).sort((a,b)=>b-a);
-        fiscalYearSelect.innerHTML="";
-        fyList.forEach(y=>{ const opt=document.createElement("option"); opt.value=y; opt.textContent=`${y}期（${y}/04〜${y+1}/03）`; fiscalYearSelect.appendChild(opt); });
-        const def = fyList.includes(currentFYStartYear) ? currentFYStartYear : fyList[0]; if(def) fiscalYearSelect.value=def;
-      }
-
-      async function fetchMetric(store, item, months){
-        const { data, error } = await supabaseClient
-          .from("店舗診断表").select("月, 目標数値, 実績")
-          .eq("店舗名", store).eq("項目", item).in("月", months);
-        if(error){ console.error("fetchMetric error:", error); return {}; }
-        const map={}; (data||[]).forEach(r=>{ map[String(r.月)] = { target: r.目標数値!=null ? Number(r.目標数値) : null, actual: r.実績!=null ? Number(r.実績) : null }; });
-        return map;
-      }
-
-      function calcYoYPercent(currActualArr, prevActualArr){
-        return currActualArr.map((v,i)=>{ const p=prevActualArr[i]; if(p==null||p===0||v==null) return null; return (v/p-1)*100; });
-      }
-
-      function renderChart(ctx, labels, targetArr, actualArr, yoyPercentArr, title, unit, showYoY, existingChartRef){
-        if(existingChartRef) existingChartRef.destroy();
-        const datasets=[{label:'目標',data:targetArr,tension:0.1,fill:false},{label:'実績',data:actualArr,tension:0.1,fill:false}];
-        if(showYoY){ datasets.push({label:'昨対比(%)',data:yoyPercentArr,yAxisID:'y2',tension:0.1,borderDash:[5,5],spanGaps:true}); }
-        return new Chart(ctx,{type:'line',data:{labels,datasets},options:{
-          responsive:true,maintainAspectRatio:false,spanGaps:true,
-          plugins:{title:{display:true,text:title},legend:{display:true},tooltip:{callbacks:{label:(c)=>{
-            const name=c.dataset.label||'', val=c.raw;
-            if(name.includes('昨対比')) return `${name}: ${val==null?'-':val.toFixed(1)}%`;
-            if(unit==='yen') return `${name}: ${val==null?'-':formatYen(val)}`; return `${name}: ${val==null?'-':Number(val).toLocaleString()}`
-          }}}},
-          scales:{x:{type:'category',ticks:{autoSkip:false,maxRotation:45,minRotation:0},title:{display:true,text:'月'}},
-                  y:{beginAtZero:true,title:{display:true,text:unit==='yen'?'金額':'値'},ticks:{callback:(v)=> unit==='yen'?(v===0?'0':v.toLocaleString()):v}},
-                  y2:{position:'right',grid:{drawOnChartArea:false},ticks:{callback:(v)=>`${v}%`},title:{display:showYoY,text:showYoY?'昨対比(%)':''},suggestedMin:-50,suggestedMax:50}}
-        }});
-      }
-
-      async function renderAllCharts(){
-        const store = chartStoreSelect.value || storeSelect.value;
-        const fy = Number(fiscalYearSelect.value); if(!store||!fy) return;
-        const months=getFiscalMonths(fy), prevMonths=getFiscalMonths(fy-1), labels=months.map(labelYYYYMM), showYoY=toggleYoy.checked;
-
-        const salesCurr=await fetchMetric(store,'売上',months), salesPrev=await fetchMetric(store,'売上',prevMonths);
-        const salesTarget=months.map(m=>salesCurr[m]?.target??null), salesActual=months.map(m=>salesCurr[m]?.actual??null);
-        const salesPrevActual=prevMonths.map(m=>salesPrev[m]?.actual??null), salesYoY=calcYoYPercent(salesActual,salesPrevActual);
-        salesChart=renderChart(ctxSales,labels,salesTarget,salesActual,salesYoY,`${store}：売上 目標／実績（${fy}/04〜${fy+1}/03）`,'yen',showYoY,salesChart);
-
-        const unitCurr=await fetchMetric(store,'単価',months), unitPrev=await fetchMetric(store,'単価',prevMonths);
-        const unitTarget=months.map(m=>unitCurr[m]?.target??null), unitActual=months.map(m=>unitCurr[m]?.actual??null);
-        const unitPrevActual=prevMonths.map(m=>unitPrev[m]?.actual??null), unitYoY=calcYoYPercent(unitActual,unitPrevActual);
-        unitChart=renderChart(ctxUnit,labels,unitTarget,unitActual,unitYoY,`${store}：客単価 目標／実績（${fy}/04〜${fy+1}/03）`,'yen',showYoY,unitChart);
-
-        const labourCurr=await fetchMetric(store,'人時売上高',months), labourPrev=await fetchMetric(store,'人時売上高',prevMonths);
-        const labourTarget=months.map(m=>labourCurr[m]?.target??null), labourActual=months.map(m=>labourCurr[m]?.actual??null);
-        const labourPrevActual=prevMonths.map(m=>labourPrev[m]?.actual??null), labourYoY=calcYoYPercent(labourActual,labourPrevActual);
-        labourChart=renderChart(ctxLabour,labels,labourTarget,labourActual,labourYoY,`${store}：人時売上高 目標／実績（${fy}/04〜${fy+1}/03）`,'number',showYoY,labourChart);
-      }
-
-      // 採点（10点/0点）
-      const LOWER_IS_BETTER = new Set(['F','D','人件費']);
-      function binaryScore(item, t, a){
-        if(a==null) return 10;       // 実績なし＝10点
-        if(Number(a)===0) return 0;  // 実績0＝0点
-        if(t==null) return 10;       // 目標なし＝10点
-        if(LOWER_IS_BETTER.has(item)) return Number(a) <= Number(t) ? 10 : 0;
-        return Number(a) >= Number(t) ? 10 : 0;
-      }
-
-      const SCORE_ITEMS = ['売上','単価','人時売上高','F','D','人件費','臨店シート','店舗MTG参加率','CSアンケート','面談進捗','PAリファラル採用'];
-
-      async function computeScoreByItems(store, month){
-        const { data, error } = await supabaseClient
-          .from("店舗診断表")
-          .select("項目,目標数値,実績")
-          .eq("店舗名", store)
-          .eq("月", month)
-          .in("項目", SCORE_ITEMS);
-        if(error){ console.error('computeScore error', error); return null; }
-        const map={}; (data||[]).forEach(r=> map[r.項目] = {t:r.目標数値, a:r.実績});
-        let total=0;
-        SCORE_ITEMS.forEach(it=>{
-          const pair = map[it] || {};
-          total += binaryScore(it,
-            pair.t!=null?Number(pair.t):null,
-            pair.a!=null?Number(pair.a):null
-          );
-        });
-        return total; // 0..110
-      }
-
-      async function renderScoreRanking(month){
-        const stores = await getUniqueStores();
-        const targetStores = stores.slice(0,6);
-        if(targetStores.length===0) return;
-
-        const { data:scoreRows, error } = await supabaseClient
-          .from("店舗診断表")
-          .select("店舗名,実績")
-          .eq("項目","点数")
-          .eq("月", month)
-          .in("店舗名", targetStores);
-        const directMap={}; if(!error && scoreRows){ scoreRows.forEach(r=> directMap[r.店舗名]=Math.round(Number(r.実績||0))); }
-
-        const rows=[];
-        for(const st of targetStores){
-          let score = directMap[st];
-          if(score==null){
-            const calc = await computeScoreByItems(st, month);
-            score = calc!=null ? Math.round(calc) : 0;
-          }
-          rows.push({store:st, score});
-        }
-        rows.sort((a,b)=>b.score-a.score);
-        rankTableBody.innerHTML="";
-        rows.forEach((r,idx)=>{
-          const badgeClass = idx===0?'gold':(idx===1?'silver':(idx===2?'bronze':''));
-          const tr=document.createElement('tr');
-          tr.innerHTML=`<td><span class="rank-badge ${badgeClass}">${idx+1}</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
-          rankTableBody.appendChild(tr);
-        });
-      }
-
-      // KPI更新（％表示・四捨五入・合計点・目標バッジ・ミニスコア）
-      async function updateAllKPIs(store, dateStr){
-        if(!store || !dateStr) return;
-        const month = dateStr.slice(0,7).replace("-","");
-
-        const { data, error } = await supabaseClient
-          .from("店舗診断表")
-          .select("項目,目標数値,実績")
-          .eq("店舗名", store)
-          .eq("月", month);
-        if(error){ console.error("KPI取得エラー:", error); return; }
-
-        // 追加：表示用ヘルパー
-        function asPercentInt(v){
-          if (v == null) return null;
-          const n = Number(v);
-          const pct = Math.abs(n) <= 1 ? n * 100 : n; // 0-1なら×100、%値ならそのまま
-          return Math.round(pct);
-        }
-        function roundIfNeeded(item, n){
-          return (item === '単価' || item === '人時売上高') ? Math.round(Number(n)) : Number(n);
+        function getFiscalMonths(fyStartYear) {
+          const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr;
         }
 
-        for(const { id, item } of kpiList){
-          const card = document.getElementById(id); if(!card) continue;
-          const valueEl = card.querySelector('.value');
-          const trendEl = card.querySelector('.trend');
-          const iconEl = card.querySelector('.icon');
-          const percentEl = card.querySelector('.percent');
+        // 店舗一覧
+        async function getUniqueStores() {
+          const { data, error } = await supabaseClient.from("店舗診断表").select("店舗名").order("店舗名", { ascending: true });
+          if (error) { console.error("店舗名取得エラー:", error); return []; }
+          return Array.from(new Set((data || []).map(r => r.店舗名)));
+        }
+        async function populateStoreSelects() {
+          const stores = await getUniqueStores();
+          storeSelect.innerHTML = ""; chartStoreSelect.innerHTML = "";
+          stores.forEach(name => {
+            const o1 = document.createElement("option"); o1.value = o1.textContent = name; storeSelect.appendChild(o1);
+            const o2 = document.createElement("option"); o2.value = o2.textContent = name; chartStoreSelect.appendChild(o2);
+          });
+        }
+        async function populateFiscalYears(store) {
+          const { data, error } = await supabaseClient.from("店舗診断表").select("月").eq("店舗名", store).eq("項目", "売上").order("月", { ascending: true });
+          if (error) { console.error("期抽出エラー:", error); return; }
+          const months = (data || []).map(r => String(r.月));
+          const fySet = new Set(); months.forEach(m => { const y = +m.slice(0, 4), mm = +m.slice(4, 6); fySet.add((mm >= 4) ? y : (y - 1)); });
+          const fyList = Array.from(fySet).sort((a, b) => b - a);
+          fiscalYearSelect.innerHTML = "";
+          fyList.forEach(y => { const opt = document.createElement("option"); opt.value = y; opt.textContent = `${y}期（${y}/04〜${y + 1}/03）`; fiscalYearSelect.appendChild(opt); });
+          const def = fyList.includes(currentFYStartYear) ? currentFYStartYear : fyList[0]; if (def) fiscalYearSelect.value = def;
+        }
 
-          // 目標バッジ
-          let targetBadge = card.querySelector('.target-badge');
-          if(!targetBadge){ targetBadge=document.createElement('span'); targetBadge.className='target-badge'; card.appendChild(targetBadge); }
+        async function fetchMetric(store, item, months) {
+          const { data, error } = await supabaseClient
+            .from("店舗診断表").select("月, 目標数値, 実績")
+            .eq("店舗名", store).eq("項目", item).in("月", months);
+          if (error) { console.error("fetchMetric error:", error); return {}; }
+          const map = {}; (data || []).forEach(r => { map[String(r.月)] = { target: r.目標数値 != null ? Number(r.目標数値) : null, actual: r.実績 != null ? Number(r.実績) : null }; });
+          return map;
+        }
 
-          // ミニスコア（総合は非表示）
-          let mini = card.querySelector('.mini-score');
-          if(!mini && item!=='点数'){ mini=document.createElement('span'); mini.className='mini-score'; card.appendChild(mini); }
+        function calcYoYPercent(currActualArr, prevActualArr) {
+          return currActualArr.map((v, i) => { const p = prevActualArr[i]; if (p == null || p === 0 || v == null) return null; return (v / p - 1) * 100; });
+        }
 
-          const rec = (data||[]).find(r=>r.項目===item);
-          const target = rec && rec.目標数値!=null ? Number(rec.目標数値) : null;
-          let current = rec && rec.実績!=null ? Number(rec.実績) : null;
-
-          // 値の表示
-          if(item==='点数'){
-            const totalScore = await computeScoreByItems(store, month);
-            valueEl.textContent = totalScore!=null ? `${totalScore} / 110点` : `-- / 110点`;
-          }else{
-            let text='--', unit=unitMap[item]||'';
-            if(current!=null){
-              if(percentItems.has(item)){
-                const iv = asPercentInt(current);
-                text = `${iv}%`;
-              }else if(yenItems.has(item)){
-                const v = roundIfNeeded(item, current);
-                text = `${v.toLocaleString()} ${unit}`;
-              }else if(item==='PAリファラル採用'){
-                text = `${Math.round(Number(current))} ${unit}`;
-              }else if(item==='CSアンケート'){
-                text = `${Number(current).toLocaleString()} ${unit}`;
-              }else{
-                text = `${Number(current).toLocaleString()}${unit}`;
+        function renderChart(ctx, labels, targetArr, actualArr, yoyPercentArr, title, unit, showYoY, existingChartRef) {
+          if (existingChartRef) existingChartRef.destroy();
+          const datasets = [{ label: '目標', data: targetArr, tension: 0.1, fill: false }, { label: '実績', data: actualArr, tension: 0.1, fill: false }];
+          if (showYoY) { datasets.push({ label: '昨対比(%)', data: yoyPercentArr, yAxisID: 'y2', tension: 0.1, borderDash: [5, 5], spanGaps: true }); }
+          return new Chart(ctx, {
+            type: 'line', data: { labels, datasets }, options: {
+              responsive: true, maintainAspectRatio: false, spanGaps: true,
+              plugins: {
+                title: { display: true, text: title }, legend: { display: true }, tooltip: {
+                  callbacks: {
+                    label: (c) => {
+                      const name = c.dataset.label || '', val = c.raw;
+                      if (name.includes('昨対比')) return `${name}: ${val == null ? '-' : val.toFixed(1)}%`;
+                      if (unit === 'yen') return `${name}: ${val == null ? '-' : formatYen(val)}`; return `${name}: ${val == null ? '-' : Number(val).toLocaleString()}`
+                    }
+                  }
+                }
+              },
+              scales: {
+                x: { type: 'category', ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }, title: { display: true, text: '月' } },
+                y: { beginAtZero: true, title: { display: true, text: unit === 'yen' ? '金額' : '値' }, ticks: { callback: (v) => unit === 'yen' ? (v === 0 ? '0' : v.toLocaleString()) : v } },
+                y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: (v) => `${v}%` }, title: { display: showYoY, text: showYoY ? '昨対比(%)' : '' }, suggestedMin: -50, suggestedMax: 50 }
               }
             }
-            valueEl.textContent = text;
-          }
-
-          // 目標バッジ
-          if(item==='点数'){
-            targetBadge.textContent = '目標：110点';
-          }else if(percentItems.has(item)){
-            const tv = target!=null ? asPercentInt(target) : null;
-            targetBadge.textContent = tv!=null ? `目標：${tv}%` : '目標：--';
-          }else if(yenItems.has(item)){
-            const tv = target!=null ? roundIfNeeded(item, target) : null;
-            targetBadge.textContent = tv!=null ? `目標：${tv.toLocaleString()} ${unitMap[item]}` : '目標：--';
-          }else{
-            targetBadge.textContent = target!=null ? `目標：${Number(target).toLocaleString()}${unitMap[item]||''}` : '目標：--';
-          }
-
-          // ミニスコア
-          if(item!=='点数' && mini){
-            const s = binaryScore(item, target, current);
-            mini.textContent = `${s}点`;
-          }
-
-          // 前月比
-          const prev = await fetchPrevValue(store, month, item);
-          if(item!=='点数' && prev !== null && current!=null){
-            const diff = current - prev;
-            const rate = prev===0 ? 0 : Math.round((diff/prev)*100);
-            if(rate>=0){ iconEl.textContent='▲'; trendEl.classList.remove('down'); trendEl.classList.add('up'); }
-            else { iconEl.textContent='▼'; trendEl.classList.remove('up'); trendEl.classList.add('down'); }
-            percentEl.textContent = Math.abs(rate) + '%';
-          }else{
-            percentEl.textContent = '--%';
-          }
+          });
         }
-        await renderScoreRanking(month);
-      }
 
-      async function fetchPrevValue(store, month, item){
-        const y = Number(month.slice(0,4)), m = Number(month.slice(4,6));
-        const prev = new Date(y, m-2, 1);
-        const prevStr = `${prev.getFullYear()}${String(prev.getMonth()+1).padStart(2,'0')}`;
-        const { data, error } = await supabaseClient
-          .from("店舗診断表").select("項目,実績")
-          .eq("店舗名", store).eq("月", prevStr);
-        if(error || !data) return null;
-        const rec = data.find(r=>r.項目===item); return rec ? Number(rec.実績) : null;
-      }
+        async function renderAllCharts() {
+          const store = chartStoreSelect.value || storeSelect.value;
+          const fy = Number(fiscalYearSelect.value); if (!store || !fy) return;
+          const months = getFiscalMonths(fy), prevMonths = getFiscalMonths(fy - 1), labels = months.map(labelYYYYMM), showYoY = toggleYoy.checked;
 
-      // ---- 仮説/ネクスト＆タスク ----
-      function openDetailModal(item){
-        if(item === '点数') return; // 総合点は対象外
-        const store = storeSelect.value;
-        const month = targetDateInput.value.slice(0,7).replace("-","");
-        detailTitle.textContent = `詳細：${store} / ${month} / ${item}`;
-        detailStore.value = store;
-        detailMonth.value = month;
-        detailItem.value  = item;
-        taskItem.value    = item;
-        taskDetail.value = ''; taskDue.value = ''; taskOwner.value = '';
+          const salesCurr = await fetchMetric(store, '売上', months), salesPrev = await fetchMetric(store, '売上', prevMonths);
+          const salesTarget = months.map(m => salesCurr[m]?.target ?? null), salesActual = months.map(m => salesCurr[m]?.actual ?? null);
+          const salesPrevActual = prevMonths.map(m => salesPrev[m]?.actual ?? null), salesYoY = calcYoYPercent(salesActual, salesPrevActual);
+          salesChart = renderChart(ctxSales, labels, salesTarget, salesActual, salesYoY, `${store}：売上 目標／実績（${fy}/04〜${fy + 1}/03）`, 'yen', showYoY, salesChart);
 
-        findOrCreateDiagnostic(store, month, item).then(row=>{
-          if(row){
-            detailId.value = row.id;
-            detailHypo.value = row.仮説 ?? '';
-            detailNext.value = row.ネクストアクション ?? '';
+          const unitCurr = await fetchMetric(store, '単価', months), unitPrev = await fetchMetric(store, '単価', prevMonths);
+          const unitTarget = months.map(m => unitCurr[m]?.target ?? null), unitActual = months.map(m => unitCurr[m]?.actual ?? null);
+          const unitPrevActual = prevMonths.map(m => unitPrev[m]?.actual ?? null), unitYoY = calcYoYPercent(unitActual, unitPrevActual);
+          unitChart = renderChart(ctxUnit, labels, unitTarget, unitActual, unitYoY, `${store}：客単価 目標／実績（${fy}/04〜${fy + 1}/03）`, 'yen', showYoY, unitChart);
+
+          const labourCurr = await fetchMetric(store, '人時売上高', months), labourPrev = await fetchMetric(store, '人時売上高', prevMonths);
+          const labourTarget = months.map(m => labourCurr[m]?.target ?? null), labourActual = months.map(m => labourCurr[m]?.actual ?? null);
+          const labourPrevActual = prevMonths.map(m => labourPrev[m]?.actual ?? null), labourYoY = calcYoYPercent(labourActual, labourPrevActual);
+          labourChart = renderChart(ctxLabour, labels, labourTarget, labourActual, labourYoY, `${store}：人時売上高 目標／実績（${fy}/04〜${fy + 1}/03）`, 'number', showYoY, labourChart);
+        }
+
+        // 採点（10/0点）
+        const LOWER_IS_BETTER = new Set(['F', 'D', '人件費']);
+        function binaryScore(item, t, a) {
+          if (a == null) return 10;       // 実績なし＝10点
+          if (Number(a) === 0) return 0;  // 実績0＝0点
+          if (t == null) return 10;       // 目標なし＝10点
+          if (LOWER_IS_BETTER.has(item)) return Number(a) <= Number(t) ? 10 : 0;
+          return Number(a) >= Number(t) ? 10 : 0;
+        }
+
+        const SCORE_ITEMS = ['売上', '単価', '人時売上高', 'F', 'D', '人件費', '臨店シート', '店舗MTG参加率', 'CSアンケート', '面談進捗', 'PAリファラル採用'];
+
+        async function computeScoreByItems(store, month) {
+          const { data, error } = await supabaseClient
+            .from("店舗診断表")
+            .select("項目,目標数値,実績")
+            .eq("店舗名", store)
+            .eq("月", month)
+            .in("項目", SCORE_ITEMS);
+          if (error) { console.error('computeScore error', error); return null; }
+          const map = {}; (data || []).forEach(r => map[r.項目] = { t: r.目標数値, a: r.実績 });
+          let total = 0;
+          SCORE_ITEMS.forEach(it => {
+            const pair = map[it] || {};
+            total += binaryScore(it,
+              pair.t != null ? Number(pair.t) : null,
+              pair.a != null ? Number(pair.a) : null
+            );
+          });
+          return total; // 0..110
+        }
+
+        async function renderScoreRanking(month) {
+          const stores = await getUniqueStores();
+          const targetStores = stores.slice(0, 6);
+          if (targetStores.length === 0) return;
+
+          const { data: scoreRows, error } = await supabaseClient
+            .from("店舗診断表")
+            .select("店舗名,実績")
+            .eq("項目", "点数")
+            .eq("月", month)
+            .in("店舗名", targetStores);
+          const directMap = {}; if (!error && scoreRows) { scoreRows.forEach(r => directMap[r.店舗名] = Math.round(Number(r.実績 || 0))); }
+
+          const rows = [];
+          for (const st of targetStores) {
+            let score = directMap[st];
+            if (score == null) {
+              const calc = await computeScoreByItems(st, month);
+              score = calc != null ? Math.round(calc) : 0;
+            }
+            rows.push({ store: st, score });
           }
-          detailModal.hidden = false;
-        }).catch(err=>{
-          console.error(err); alert('データ取得に失敗しました');
+          rows.sort((a, b) => b.score - a.score);
+          rankTableBody.innerHTML = "";
+          rows.forEach((r, idx) => {
+            const badgeClass = idx === 0 ? 'gold' : (idx === 1 ? 'silver' : (idx === 2 ? 'bronze' : ''));
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td><span class="rank-badge ${badgeClass}">${idx + 1}</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
+            rankTableBody.appendChild(tr);
+          });
+        }
+
+        // KPI更新（％表示・四捨五入・合計点・目標バッジ・ミニスコア）
+        async function updateAllKPIs(store, dateStr) {
+          if (!store || !dateStr) return;
+          const month = dateStr.slice(0, 7).replace("-", "");
+
+          const { data, error } = await supabaseClient
+            .from("店舗診断表")
+            .select("項目,目標数値,実績")
+            .eq("店舗名", store)
+            .eq("月", month);
+          if (error) { console.error("KPI取得エラー:", error); return; }
+
+          // 表示用ヘルパー
+          function asPercentInt(v) {
+            if (v == null) return null;
+            const n = Number(v);
+            const pct = Math.abs(n) <= 1 ? n * 100 : n; // 0-1 -> %
+            return Math.round(pct);
+          }
+          function roundIfNeeded(item, n) {
+            return (item === '単価' || item === '人時売上高') ? Math.round(Number(n)) : Number(n);
+          }
+
+          for (const { id, item } of kpiList) {
+            const card = document.getElementById(id); if (!card) continue;
+            const valueEl = card.querySelector('.value');
+            const trendEl = card.querySelector('.trend');
+            const iconEl = card.querySelector('.icon');
+            const percentEl = card.querySelector('.percent');
+
+            // 目標バッジ
+            let targetBadge = card.querySelector('.target-badge');
+            if (!targetBadge) { targetBadge = document.createElement('span'); targetBadge.className = 'target-badge'; card.appendChild(targetBadge); }
+
+            // ミニスコア（総合は非表示）
+            let mini = card.querySelector('.mini-score');
+            if (!mini && item !== '点数') { mini = document.createElement('span'); mini.className = 'mini-score'; card.appendChild(mini); }
+
+            const rec = (data || []).find(r => r.項目 === item);
+            const target = rec && rec.目標数値 != null ? Number(rec.目標数値) : null;
+            let current = rec && rec.実績 != null ? Number(rec.実績) : null;
+
+            // 値の表示
+            if (item === '点数') {
+              const totalScore = await computeScoreByItems(store, month);
+              valueEl.textContent = totalScore != null ? `${totalScore} / 110点` : `-- / 110点`;
+            } else {
+              let text = '--', unit = unitMap[item] || '';
+              if (current != null) {
+                if (percentItems.has(item)) {
+                  const iv = asPercentInt(current);
+                  text = `${iv}%`;
+                } else if (yenItems.has(item)) {
+                  const v = roundIfNeeded(item, current);
+                  text = `${v.toLocaleString()} ${unit}`;
+                } else if (item === 'PAリファラル採用') {
+                  text = `${Math.round(Number(current))} ${unit}`;
+                } else if (item === 'CSアンケート') {
+                  text = `${Number(current).toLocaleString()} ${unit}`;
+                } else {
+                  text = `${Number(current).toLocaleString()}${unit}`;
+                }
+              }
+              valueEl.textContent = text;
+            }
+
+            // 目標バッジ
+            if (item === '点数') {
+              targetBadge.textContent = '目標：110点';
+            } else if (percentItems.has(item)) {
+              const tv = target != null ? asPercentInt(target) : null;
+              targetBadge.textContent = tv != null ? `目標：${tv}%` : '目標：--';
+            } else if (yenItems.has(item)) {
+              const tv = target != null ? roundIfNeeded(item, target) : null;
+              targetBadge.textContent = tv != null ? `目標：${tv.toLocaleString()} ${unitMap[item]}` : '目標：--';
+            } else {
+              targetBadge.textContent = target != null ? `目標：${Number(target).toLocaleString()}${unitMap[item] || ''}` : '目標：--';
+            }
+
+            // ミニスコア（10/0）
+            if (item !== '点数' && mini) {
+              const s = binaryScore(item, target, current);
+              mini.textContent = `${s}点`;
+            }
+
+            // 前月比
+            const prev = await fetchPrevValue(store, month, item);
+            if (item !== '点数' && prev !== null && current != null) {
+              const diff = current - prev;
+              const rate = prev === 0 ? 0 : Math.round((diff / prev) * 100);
+              if (rate >= 0) { iconEl.textContent = '▲'; trendEl.classList.remove('down'); trendEl.classList.add('up'); }
+              else { iconEl.textContent = '▼'; trendEl.classList.remove('up'); trendEl.classList.add('down'); }
+              percentEl.textContent = Math.abs(rate) + '%';
+            } else {
+              percentEl.textContent = '--%';
+            }
+          }
+          await renderScoreRanking(month);
+        }
+
+        async function fetchPrevValue(store, month, item) {
+          const y = Number(month.slice(0, 4)), m = Number(month.slice(4, 6));
+          const prev = new Date(y, m - 2, 1);
+          const prevStr = `${prev.getFullYear()}${String(prev.getMonth() + 1).padStart(2, '0')}`;
+          const { data, error } = await supabaseClient
+            .from("店舗診断表").select("項目,実績")
+            .eq("店舗名", store).eq("月", prevStr);
+          if (error || !data) return null;
+          const rec = data.find(r => r.項目 === item); return rec ? Number(rec.実績) : null;
+        }
+
+        // ---- 仮説/ネクスト＆タスク ----
+        function openDetailModal(item) {
+          if (item === '点数') return; // 総合点は対象外
+          const store = storeSelect.value;
+          const month = targetDateInput.value.slice(0, 7).replace("-", "");
+          detailTitle.textContent = `詳細：${store} / ${month} / ${item}`;
+          detailStore.value = store;
+          detailMonth.value = month;
+          detailItem.value = item;
+          taskItem.value = item;
+          taskDetail.value = ''; taskDue.value = ''; taskOwner.value = '';
+
+          findOrCreateDiagnostic(store, month, item).then(row => {
+            if (row) {
+              detailId.value = row.id;
+              detailHypo.value = row.仮説 ?? '';
+              detailNext.value = row.ネクストアクション ?? '';
+            }
+            detailModal.hidden = false;
+          }).catch(err => {
+            console.error(err); alert('データ取得に失敗しました');
+          });
+        }
+        async function findOrCreateDiagnostic(store, month, item) {
+          let { data, error } = await supabaseClient
+            .from('店舗診断表')
+            .select('id, 仮説, ネクストアクション').eq('店舗名', store).eq('月', month).eq('項目', item).limit(1);
+          if (error) { throw error; }
+          if (data && data.length) { return data[0]; }
+          const { error: upErr } = await supabaseClient
+            .from('店舗診断表')
+            .upsert([{ 店舗名: store, 月: month, 項目: item }], { onConflict: '店舗名,月,項目' });
+          if (upErr) { throw upErr; }
+          const res = await supabaseClient
+            .from('店舗診断表')
+            .select('id, 仮説, ネクストアクション').eq('店舗名', store).eq('月', month).eq('項目', item).limit(1);
+          if (res.error) { throw res.error; }
+          return (res.data && res.data[0]) ? res.data[0] : null;
+        }
+        function closeDetail() { detailModal.hidden = true; }
+        btnDetailCancel.addEventListener('click', closeDetail);
+        detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetail(); });
+
+        btnDetailSave.addEventListener('click', async () => {
+          const id = detailId.value;
+          if (!id) { alert('ID取得に失敗しました'); return; }
+          const { error } = await supabaseClient
+            .from('店舗診断表')
+            .update({ 仮説: detailHypo.value, ネクストアクション: detailNext.value })
+            .eq('id', id);
+          if (error) { alert('保存に失敗しました'); return; }
+          alert('仮説・ネクストアクションを保存しました');
+          closeDetail();
         });
-      }
-      async function findOrCreateDiagnostic(store, month, item){
-        let { data, error } = await supabaseClient
-          .from('店舗診断表')
-          .select('id, 仮説, ネクストアクション').eq('店舗名',store).eq('月',month).eq('項目',item).limit(1);
-        if(error){ throw error; }
-        if(data && data.length){ return data[0]; }
-        const { error: upErr } = await supabaseClient
-          .from('店舗診断表')
-          .upsert([{ 店舗名:store, 月:month, 項目:item }], { onConflict:'店舗名,月,項目' });
-        if(upErr){ throw upErr; }
-        const res = await supabaseClient
-          .from('店舗診断表')
-          .select('id, 仮説, ネクストアクション').eq('店舗名',store).eq('月',month).eq('項目',item).limit(1);
-        if(res.error){ throw res.error; }
-        return (res.data && res.data[0]) ? res.data[0] : null;
-      }
-      function closeDetail(){ detailModal.hidden = true; }
-      btnDetailCancel.addEventListener('click', closeDetail);
-      detailModal.addEventListener('click', (e)=>{ if(e.target===detailModal) closeDetail(); });
 
-      btnDetailSave.addEventListener('click', async ()=>{
-        const id = detailId.value;
-        if(!id){ alert('ID取得に失敗しました'); return; }
-        const { error } = await supabaseClient
-          .from('店舗診断表')
-          .update({ 仮説: detailHypo.value, ネクストアクション: detailNext.value })
-          .eq('id', id);
-        if(error){ alert('保存に失敗しました'); return; }
-        alert('仮説・ネクストアクションを保存しました');
-        closeDetail();
-      });
+        btnDetailSend.addEventListener('click', async () => {
+          const diagId = detailId.value;
+          const item = taskItem.value;
+          const tDetail = taskDetail.value.trim();
+          const due = taskDue.value || null;
+          const owner = taskOwner.value || null;
+          if (!diagId) { alert('診断表IDがありません'); return; }
+          if (!item || !tDetail) { alert('「項目」「タスク」は必須です'); return; }
+          const { error } = await supabaseClient
+            .from('タスクテーブル')
+            .insert([{ 店舗診断表_id: diagId, 項目: item, タスク: tDetail, 期限: due, 責任者: owner }]);
+          if (error) { alert('タスク送信に失敗しました'); return; }
+          alert('タスクを送信しました');
+          taskDetail.value = ''; taskDue.value = ''; taskOwner.value = '';
+        });
 
-      btnDetailSend.addEventListener('click', async ()=>{
-        const diagId = detailId.value;
-        const item = taskItem.value;
-        const tDetail = taskDetail.value.trim();
-        const due = taskDue.value || null;
-        const owner = taskOwner.value || null;
-        if(!diagId){ alert('診断表IDがありません'); return; }
-        if(!item || !tDetail){ alert('「項目」「タスク」は必須です'); return; }
-        const { error } = await supabaseClient
-          .from('タスクテーブル')
-          .insert([{ 店舗診断表_id: diagId, 項目: item, タスク: tDetail, 期限: due, 責任者: owner }]);
-        if(error){ alert('タスク送信に失敗しました'); return; }
-        alert('タスクを送信しました');
-        taskDetail.value=''; taskDue.value=''; taskOwner.value='';
-      });
+        // 数値編集モーダル
+        function openEditModal(item, e) {
+          if (e) e.stopPropagation();
+          const store = storeSelect.value;
+          const month = targetDateInput.value.slice(0, 7).replace("-", "");
+          editTitle.textContent = `編集：${store} / ${month} / ${item}`;
+          editStore.value = store; editMonth.value = month; editItem.value = item;
+          editTarget.value = ''; editActual.value = ''; modal.hidden = false;
+          supabaseClient.from('店舗診断表')
+            .select('目標数値,実績').eq('店舗名', store).eq('月', month).eq('項目', item).limit(1)
+            .then(({ data, error }) => { if (!error && data && data[0]) { if (data[0].目標数値 != null) editTarget.value = Number(data[0].目標数値); if (data[0].実績 != null) editActual.value = Number(data[0].実績); } });
+        }
+        function closeEditModal() { modal.hidden = true; }
+        btnCancel.addEventListener('click', closeEditModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeEditModal(); });
+        btnSave.addEventListener('click', async () => {
+          const store = editStore.value, month = editMonth.value, item = editItem.value;
+          const target = editTarget.value.trim() === '' ? null : Number(editTarget.value);
+          const actual = editActual.value.trim() === '' ? null : Number(editActual.value);
+          const { error } = await supabaseClient.from('店舗診断表')
+            .upsert([{ 店舗名: store, 月: month, 項目: item, 目標数値: target, 実績: actual }], { onConflict: '店舗名,月,項目' });
+          if (error) { console.error('保存エラー:', error); alert('保存に失敗しました'); return; }
+          closeEditModal();
+          await updateAllKPIs(storeSelect.value, targetDateInput.value);
+          await renderAllCharts();
+        });
 
-      // 数値編集モーダル
-      function openEditModal(item, e){
-        if(e) e.stopPropagation();
-        const store = storeSelect.value;
-        const month = targetDateInput.value.slice(0,7).replace("-","");
-        editTitle.textContent = `編集：${store} / ${month} / ${item}`;
-        editStore.value = store; editMonth.value = month; editItem.value = item;
-        editTarget.value=''; editActual.value=''; modal.hidden=false;
-        supabaseClient.from('店舗診断表')
-          .select('目標数値,実績').eq('店舗名',store).eq('月',month).eq('項目',item).limit(1)
-          .then(({data,error})=>{ if(!error && data && data[0]){ if(data[0].目標数値!=null) editTarget.value=Number(data[0].目標数値); if(data[0].実績!=null) editActual.value=Number(data[0].実績);} });
-      }
-      function closeEditModal(){ modal.hidden=true; }
-      btnCancel.addEventListener('click', closeEditModal);
-      modal.addEventListener('click', (e)=>{ if(e.target===modal) closeEditModal(); });
-      btnSave.addEventListener('click', async ()=>{
-        const store=editStore.value, month=editMonth.value, item=editItem.value;
-        const target=editTarget.value.trim()===''?null:Number(editTarget.value);
-        const actual=editActual.value.trim()===''?null:Number(editActual.value);
-        const { error } = await supabaseClient.from('店舗診断表')
-          .upsert([{ 店舗名:store, 月:month, 項目:item, 目標数値:target, 実績:actual }],{ onConflict:'店舗名,月,項目' });
-        if(error){ console.error('保存エラー:', error); alert('保存に失敗しました'); return; }
-        closeEditModal();
+        // ✎ボタン配置 & カードクリック
+        function attachEditButtonsAndCardClicks() {
+          kpiList.forEach(({ id, item }) => {
+            const card = document.getElementById(id); if (!card) return;
+            if (item !== '点数') {
+              card.addEventListener('click', () => openDetailModal(item));
+            }
+            if (!card.querySelector('.edit-btn')) {
+              const btn = document.createElement('button'); btn.className = 'edit-btn'; btn.title = `${item}を編集`; btn.innerText = '✎';
+              btn.addEventListener('click', (e) => openEditModal(item, e));
+              card.appendChild(btn);
+            }
+          });
+        }
+
+        // 初期化
+        const today = new Date(); targetDateInput.value = today.toISOString().slice(0, 7);
+        await populateStoreSelects();
+        document.getElementById("chart-store-select").value = storeSelect.value;
+        await populateFiscalYears(storeSelect.value);
+        attachEditButtonsAndCardClicks();
         await updateAllKPIs(storeSelect.value, targetDateInput.value);
         await renderAllCharts();
-      });
 
-      // ✎ボタン配置 & カードクリック
-      function attachEditButtonsAndCardClicks(){
-        kpiList.forEach(({id,item})=>{
-          const card=document.getElementById(id); if(!card) return;
-          if(item !== '点数'){
-            card.addEventListener('click', ()=> openDetailModal(item));
-          }
-          if(!card.querySelector('.edit-btn')){
-            const btn=document.createElement('button'); btn.className='edit-btn'; btn.title=`${item}を編集`; btn.innerText='✎';
-            btn.addEventListener('click', (e)=> openEditModal(item, e));
-            card.appendChild(btn);
-          }
-        });
-      }
-
-      const today=new Date(); targetDateInput.value=today.toISOString().slice(0,7);
-
-      await populateStoreSelects();
-      chartStoreSelect.value=storeSelect.value;
-      await populateFiscalYears(chartStoreSelect.value);
-      attachEditButtonsAndCardClicks();
-      await updateAllKPIs(storeSelect.value, targetDateInput.value);
-      await renderAllCharts();
-
-      storeSelect.addEventListener("change", async ()=>{ await updateAllKPIs(storeSelect.value, targetDateInput.value); });
-      targetDateInput.addEventListener("change", ()=>{ updateAllKPIs(storeSelect.value, targetDateInput.value); });
-      chartStoreSelect.addEventListener("change", async ()=>{ await populateFiscalYears(chartStoreSelect.value); await renderAllCharts(); });
-      fiscalYearSelect.addEventListener("change", renderAllCharts);
-      toggleYoy.addEventListener("change", renderAllCharts);
-    })();
-  </script>
+        // イベント
+        storeSelect.addEventListener("change", async () => { await updateAllKPIs(storeSelect.value, targetDateInput.value); });
+        targetDateInput.addEventListener("change", () => { updateAllKPIs(storeSelect.value, targetDateInput.value); });
+        document.getElementById("chart-store-select").addEventListener("change", async (e) => { await populateFiscalYears(e.target.value); await renderAllCharts(); });
+        fiscalYearSelect.addEventListener("change", renderAllCharts);
+        toggleYoy.addEventListener("change", renderAllCharts);
+      })();
+    </script>
 </body>
+
 </html>
