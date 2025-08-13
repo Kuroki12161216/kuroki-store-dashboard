@@ -2,34 +2,29 @@
 
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
-// ★ Supabase設定
+/* ===== Supabase設定 ===== */
 const SUPABASE_URL = "https://djgylzypyunbcetvquom.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZ3lsenlweXVuYmNldHZxdW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4MTk3MjgsImV4cCI6MjA1NjM5NTcyOH0.tRwiVkMiCIvONpjyAJAt3FZ2iUIy6ihaAiHMtZ3bFI0";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ====== DOM参照 ====== */
-// 画面切替
+/* ===== DOM参照 ===== */
 const diagnosticSection = document.getElementById("diagnosticSection");
 const taskSection = document.getElementById("taskSection");
 
-// 診断表
 const storeSelect = document.getElementById("storeSelect");
 const monthSelect = document.getElementById("monthSelect");
 const diagnosticsCardContainer = document.getElementById("diagnosticsCardContainer");
 
-// タスク
 const storeSelectTask = document.getElementById("storeSelectTask");
 const tasksTableBody = document.querySelector("#tasksTable tbody");
 
-// 追加フォーム
 const taskAddStoreSelect = document.getElementById("taskAddStoreSelect");
 const taskAddItemInput = document.getElementById("taskAddItemInput");
 const taskAddDetailInput = document.getElementById("taskAddDetailInput");
 const taskAddDueInput = document.getElementById("taskAddDueInput");
 const taskAddOwnerInput = document.getElementById("taskAddOwnerInput");
 
-// モーダル
 const modalDiagnosticId = document.getElementById("modalDiagnosticId");
 const modalHypothesisInput = document.getElementById("modalHypothesisInput");
 const modalNextActionInput = document.getElementById("modalNextActionInput");
@@ -38,76 +33,58 @@ const modalTaskDetail = document.getElementById("modalTaskDetail");
 const modalTaskDue = document.getElementById("modalTaskDue");
 const modalTaskOwner = document.getElementById("modalTaskOwner");
 
-// ソート用
+/* ===== 状態 ===== */
 let tasksDataGlobal = [];
 let currentSortColumn = null;
 let currentSortDir = "asc";
-
-// TH参照
-const thItem = document.getElementById("thItem");
-const thStore = document.getElementById("thStore");
-const thTask = document.getElementById("thTask");
-const thDue = document.getElementById("thDue");
-const thOwner = document.getElementById("thOwner");
-
 let bootstrapModal = null;
 
-/* ====== 初期化 ====== */
+// いま開いているスワイプ行（他を閉じるため）
+let openSwipeContent = null;
+
+/* ===== 初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
   await initMonthDropdown();
   await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
   subscribeTasksRealtime();
-  // 初回レスポンシブ適用
-  applyResponsiveTasksUI();
+  applyResponsiveTasksUI(); // 初回適用
 });
-
 window.addEventListener("resize", applyResponsiveTasksUI);
 
-/* =========================
-   画面切替 & Offcanvas制御
-   ========================= */
-window.showDiagnosticSection = function showDiagnosticSection() {
+/* ===== 画面切替 ===== */
+window.showDiagnosticSection = function () {
   diagnosticSection.style.display = 'block';
   taskSection.style.display = 'none';
   document.getElementById('settingsSection').style.display = 'none';
 };
-window.showTaskSection = function showTaskSection() {
+window.showTaskSection = function () {
   diagnosticSection.style.display = 'none';
   taskSection.style.display = 'block';
   document.getElementById('settingsSection').style.display = 'none';
-  // 表示切替時もUI適用
   applyResponsiveTasksUI();
 };
-window.showSettingsSection = function showSettingsSection() {
+window.showSettingsSection = function () {
   diagnosticSection.style.display = 'none';
   taskSection.style.display = 'none';
   document.getElementById('settingsSection').style.display = 'block';
 };
-window.closeOffcanvas = function closeOffcanvas() {
+window.closeOffcanvas = function () {
   const el = document.getElementById('offcanvasNavbar');
   if (!el) return;
   const inst = bootstrap.Offcanvas.getInstance(el);
   if (inst) inst.hide();
 };
 
-/* =========================
-   Service Worker
-   ========================= */
+/* ===== Service Worker ===== */
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('service_worker.js').then(reg => {
-    console.log('ServiceWorker registration successful with scope:', reg.scope);
-  }).catch(err => {
-    console.log('ServiceWorker registration failed:', err);
-  });
+  navigator.serviceWorker.register('service_worker.js').catch(console.error);
 }
 
-/* =========================
-   通知許可 UI
-   ========================= */
+/* ===== 通知UI ===== */
 const $notifBadge = document.getElementById('notificationStatus');
-window.requestNotificationPermission = async function requestNotificationPermission() {
+window.requestNotificationPermission = async function () {
   try {
     if (!('Notification' in window)) return alert('このブラウザは通知に対応していません。');
     await Notification.requestPermission();
@@ -118,29 +95,19 @@ function updateNotificationUI() {
   if (!$notifBadge) return;
   const perm = (Notification && Notification.permission) ? Notification.permission : 'default';
   $notifBadge.classList.remove('badge-perm-default', 'badge-perm-granted', 'badge-perm-denied');
-  if (perm === 'granted') {
-    $notifBadge.textContent = '許可';
-    $notifBadge.classList.add('badge-perm-granted');
-  } else if (perm === 'denied') {
-    $notifBadge.textContent = '拒否';
-    $notifBadge.classList.add('badge-perm-denied');
-  } else {
-    $notifBadge.textContent = '未許可';
-    $notifBadge.classList.add('badge-perm-default');
-  }
+  if (perm === 'granted') { $notifBadge.textContent = '許可'; $notifBadge.classList.add('badge-perm-granted'); }
+  else if (perm === 'denied') { $notifBadge.textContent = '拒否'; $notifBadge.classList.add('badge-perm-denied'); }
+  else { $notifBadge.textContent = '未許可'; $notifBadge.classList.add('badge-perm-default'); }
 }
 updateNotificationUI();
 
-/* =========================
-   CSV ドラッグ&ドロップ
-   ========================= */
+/* ===== CSV D&D ===== */
 export function handleDragEnter(e){ e.preventDefault(); }
 export function handleDragOver(e){ e.preventDefault(); }
 export async function handleDrop(e){
   e.preventDefault();
-  const files = e.dataTransfer?.files;
-  if (!files || !files.length) return;
-  const file = files[0];
+  const file = e.dataTransfer?.files?.[0];
+  if (!file) return;
   if (!file.name.endsWith('.csv')) return alert('CSVファイルをドロップしてください。');
   try {
     const records = await parseCsvFile(file);
@@ -155,23 +122,18 @@ window.handleDragEnter = handleDragEnter;
 window.handleDragOver = handleDragOver;
 window.handleDrop = handleDrop;
 
-/* =========================
-   店舗/月 初期化
-   ========================= */
+/* ===== 店舗/月 初期化 ===== */
 async function initStoreDropdowns() {
   const { data, error } = await supabase.from("店舗診断表").select("店舗名");
   if (error) { console.error("店舗一覧取得エラー:", error); return; }
-
   const storeNames = [...new Set(data.map((item) => item.店舗名))];
 
-  // 診断表
   storeNames.forEach((name) => {
     const opt = document.createElement("option");
     opt.value = name; opt.textContent = name;
     storeSelect.appendChild(opt);
   });
 
-  // タスク一覧（先頭に「全店舗」）
   if (!storeSelectTask.querySelector('option[value="all"]')) {
     const allOpt = document.createElement("option");
     allOpt.value = "all"; allOpt.textContent = "全店舗";
@@ -183,7 +145,6 @@ async function initStoreDropdowns() {
     storeSelectTask.appendChild(opt);
   });
 
-  // 追加フォーム
   storeNames.forEach((name) => {
     const opt = document.createElement("option");
     opt.value = name; opt.textContent = name;
@@ -202,9 +163,7 @@ async function initMonthDropdown() {
   });
 }
 
-/* =========================
-   診断表 表示
-   ========================= */
+/* ===== 診断表 ===== */
 window.fetchAndDisplayDiagnostics = async function () {
   const selectedStore = storeSelect.value;
   const selectedMonth = monthSelect.value;
@@ -320,9 +279,7 @@ window.updateDiagnostic = async function () {
   else { alert("仮説・ネクストアクションを更新しました"); fetchAndDisplayDiagnostics(); }
 };
 
-/* =========================
-   タスク：追加/取得/描画
-   ========================= */
+/* ===== タスク：追加/取得/描画 ===== */
 window.addTaskFromModal = async function () {
   const diagId = modalDiagnosticId.value;
   const item = modalTaskItem.value;
@@ -356,12 +313,11 @@ window.addTaskFromList = async function () {
   const diagnosticMonthStr = String(diagnosticMonth).padStart(2, '0');
   const diagnosticDataMonth = `${diagnosticYear}${diagnosticMonthStr}`;
 
-  // 対応する診断表ID検索
   const { data: diagData, error: diagError } = await supabase
     .from("店舗診断表").select("id")
     .eq("店舗名", storeName).eq("項目", item).eq("月", diagnosticDataMonth);
   if (diagError) return console.error("店舗診断表検索エラー:", diagError);
-  if (!diagData || !diagData.length) return alert("対応する店舗診断表が見つかりません");
+  if (!diagData?.length) return alert("対応する店舗診断表が見つかりません");
 
   const diagId = diagData[diagData.length - 1].id;
 
@@ -395,7 +351,6 @@ window.fetchAndDisplayTasks = async function () {
   const { data: result, error } = await query;
   if (error) { console.error("タスク一覧取得エラー:", error); return; }
 
-  // 店舗名を付与
   const diagIds = result.map(r => r.店舗診断表_id);
   let storeMap = {};
   if (diagIds.length) {
@@ -415,9 +370,9 @@ function renderTasks() {
 
   tasksDataGlobal.forEach((row) => {
     const tr = document.createElement("tr");
-    tr.dataset.taskId = row.id; // スワイプ側から削除用に使う
+    tr.dataset.taskId = row.id;
 
-    // 期限処理：ISO化 + 表示=mm月dd日
+    // 期限 → ISO正規化 + 表示=mm月dd日
     const iso = parseToISO(row.期限);
     const jp = iso ? isoToJPMonthDay(iso) : (row.期限 || "");
 
@@ -426,7 +381,6 @@ function renderTasks() {
       overdueCount++;
     }
 
-    // 各セル
     const storeTd = document.createElement("td"); storeTd.textContent = row.店舗名 || "";
     const itemTd  = document.createElement("td"); itemTd.textContent  = row.項目 || "";
     const taskTd  = document.createElement("td"); taskTd.textContent  = row.タスク || "";
@@ -447,11 +401,21 @@ function renderTasks() {
     tr.appendChild(ownerTd);
     tr.appendChild(operationTd);
 
+    // === ここからモバイル用スワイプセル ===
+    const mobileTd = document.createElement('td');
+    mobileTd.className = 'd-lg-none mobile-swipe-cell';
+    mobileTd.colSpan = 6;
+    mobileTd.innerHTML = buildMobileSwipeHTML({
+      store: row.店舗名 || "-", item: row.項目 || "-",
+      task: row.タスク || "(タスク未設定)", due: jp || "—", owner: row.責任者 || "—"
+    });
+    tr.appendChild(mobileTd);
+    setupSwipeRow(mobileTd.querySelector('.swipe-content')); // Pointer Events 付与
+
     tasksTableBody.appendChild(tr);
   });
 
   updateOverdueBadge(overdueCount);
-  // レスポンシブ適用（スワイプUI&列非表示）
   applyResponsiveTasksUI();
 }
 
@@ -462,25 +426,17 @@ async function deleteTask(id) {
   else { alert("削除しました"); fetchAndDisplayTasks(); }
 }
 
-/* =========================
-   Realtime
-   ========================= */
+/* ===== Realtime ===== */
 function subscribeTasksRealtime() {
   if (window.__tasksChannel) return;
   const channel = supabase.channel('tasks-realtime')
-    .on('postgres_changes', {
-      event: '*', schema: 'public', table: 'タスクテーブル'
-    }, payload => {
-      console.log('[Realtime]', payload.eventType, payload.new || payload.old);
-      fetchAndDisplayTasks();
-    })
-    .subscribe(status => { if (status === 'SUBSCRIBED') console.log('リアルタイム購読開始'); });
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'タスクテーブル' },
+      () => fetchAndDisplayTasks()
+    ).subscribe();
   window.__tasksChannel = channel;
 }
 
-/* =========================
-   ソート（期限はISOで）
-   ========================= */
+/* ===== ソート（期限はISOで） ===== */
 window.sortTasks = function (column) {
   if (currentSortColumn === column) currentSortDir = (currentSortDir === "asc" ? "desc" : "asc");
   else { currentSortColumn = column; currentSortDir = "asc"; }
@@ -502,6 +458,11 @@ window.sortTasks = function (column) {
 };
 
 function updateSortIndicators(column, dir) {
+  const thStore = document.getElementById("thStore");
+  const thItem  = document.getElementById("thItem");
+  const thTask  = document.getElementById("thTask");
+  const thDue   = document.getElementById("thDue");
+  const thOwner = document.getElementById("thOwner");
   thStore.textContent = "店舗";
   thItem.textContent  = "項目";
   thTask.textContent  = "タスク";
@@ -516,9 +477,7 @@ function updateSortIndicators(column, dir) {
   if (column === "責任者")  thOwner.textContent += arrow;
 }
 
-/* =========================
-   CSV パース & upsert
-   ========================= */
+/* ===== CSV パース & upsert ===== */
 export function parseCsvFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -560,14 +519,8 @@ export async function insertDiagnostics(records) {
   }
 }
 
-/* =========================
-   小物ユーティリティ
-   ========================= */
-function todayMidnight() {
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  return d;
-}
+/* ===== Utils ===== */
+function todayMidnight() { const d = new Date(); d.setHours(0,0,0,0); return d; }
 function parseToISO(s) {
   if (!s) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -587,68 +540,32 @@ function parseToISO(s) {
   }
   return null;
 }
-function isoToJPMonthDay(iso) {
-  const [, mo, da] = iso.split('-');
-  return `${mo}月${da}日`;
-}
+function isoToJPMonthDay(iso) { const [, mo, da] = iso.split('-'); return `${mo}月${da}日`; }
 function escapeHTML(s) {
   return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 
-/* =========================
-   レスポンシブ（スワイプUI）
-   ========================= */
+/* ===== レスポンシブ（列の表示/非表示だけ） ===== */
 function applyResponsiveTasksUI() {
   const isMobile = window.innerWidth < 992;
+  // ここでは列の表示切替のみ。スワイプ行はrender時に必ず生成しているためOK
   const rows = Array.from(tasksTableBody.querySelectorAll('tr'));
-
   rows.forEach(tr => {
     const tds = tr.querySelectorAll('td');
-    if (tds.length < 6) return;
-
-    // 期限セルは常にmm月dd日で再整形（念のため）
-    const dueTd = tds[3];
-    const iso = dueTd.dataset.iso || parseToISO(dueTd.textContent.trim());
-    if (iso) {
-      dueTd.dataset.iso = iso;
-      dueTd.textContent = isoToJPMonthDay(iso);
-    }
-
-    const existingMobile = tr.querySelector('td.mobile-swipe-cell');
-
+    if (tds.length < 7) return; // 6列 + 1モバイルセル
     if (isMobile) {
-      // 「店舗」「項目」「操作」列はSP/Tabで非表示
-      [0,1,5].forEach(i => tds[i]?.classList.add('d-none','d-lg-table-cell'));
-
-      if (!existingMobile) {
-        const store = tds[0].textContent.trim();
-        const item  = tds[1].textContent.trim();
-        const task  = tds[2].textContent.trim();
-        const due   = tds[3].textContent.trim();
-        const owner = tds[4].textContent.trim();
-
-        const mobileTd = document.createElement('td');
-        mobileTd.className = 'd-lg-none mobile-swipe-cell';
-        mobileTd.colSpan = 6; // ヘッダ6列ぶん占有
-        mobileTd.innerHTML = buildMobileSwipeHTML({ store, item, task, due, owner });
-        tr.appendChild(mobileTd);
-
-        const swipeContent = mobileTd.querySelector('.swipe-content');
-        attachSwipeHandlers(swipeContent, () => {
-          // 右スワイプの「削除」ボタン押下
-          deleteTask(tr.dataset.taskId);
-        });
-      }
+      [0,1,5].forEach(i => tds[i]?.classList.add('d-none','d-lg-table-cell')); // 店舗/項目/操作
     } else {
-      // PCに戻ったら後付けセルを除去＆表示戻し
-      if (existingMobile) existingMobile.remove();
       [0,1,5].forEach(i => tds[i]?.classList.remove('d-none','d-lg-table-cell'));
+      // PCに戻ったら開いていたスワイプを閉じる
       const content = tr.querySelector('.swipe-content');
       if (content) content.style.transform = 'translateX(0)';
+      if (openSwipeContent === tr.querySelector('.swipe-content')) openSwipeContent = null;
     }
   });
 }
 
+/* ===== スワイプUI（Pointer Events版） ===== */
 function buildMobileSwipeHTML({ store, item, task, due, owner }) {
   return `
     <div class="swipe-row">
@@ -667,76 +584,101 @@ function buildMobileSwipeHTML({ store, item, task, due, owner }) {
 
       <!-- 通常表示 -->
       <div class="swipe-content">
-        <div class="fw-bold">${escapeHTML(task || '(タスク未設定)')}</div>
+        <div class="fw-bold">${escapeHTML(task)}</div>
         <div class="swipe-meta">
-          <div><span class="swipe-label">期限</span>${escapeHTML(due  || '—')}</div>
-          <div><span class="swipe-label">責任者</span>${escapeHTML(owner || '—')}</div>
+          <div><span class="swipe-label">期限</span>${escapeHTML(due)}</div>
+          <div><span class="swipe-label">責任者</span>${escapeHTML(owner)}</div>
         </div>
       </div>
     </div>`;
 }
 
-function attachSwipeHandlers(contentEl, onDelete) {
-  const LEFT_WIDTH  = 110; // 右スワイプで露出（削除）
-  const RIGHT_WIDTH = 200; // 左スワイプで露出（店舗/項目）
+/**
+ * 1行分のスワイプをセットアップ（pointer系で安定動作）
+ * - 右スワイプ: +X → 削除（左側パネル）を露出
+ * - 左スワイプ: -X → 店舗/項目（右側パネル）を露出
+ */
+function setupSwipeRow(contentEl) {
+  const LEFT_WIDTH  = 120; // 右スワイプで露出（削除）
+  const RIGHT_WIDTH = 220; // 左スワイプで露出（店舗/項目）
 
   let startX = 0;
   let currentX = 0;
   let dragging = false;
+  let lockedAxis = null; // 'x' or 'y'（縦スクロールと競合しないように）
 
   const clamp = (x) => Math.max(-RIGHT_WIDTH, Math.min(LEFT_WIDTH, x));
 
-  contentEl.addEventListener('touchstart', (e) => {
-    startX = e.touches[0].clientX;
-    dragging = true;
-    currentX = 0;
-    contentEl.style.transition = 'none';
-  }, { passive: true });
-
-  contentEl.addEventListener('touchmove', (e) => {
-    if (!dragging) return;
-    const dx = e.touches[0].clientX - startX;
-    currentX = clamp(dx);
-    contentEl.style.transform = `translateX(${currentX}px)`;
-  }, { passive: true });
-
-  const release = () => {
-    if (!dragging) return;
-    dragging = false;
-    contentEl.style.transition = '';
-    if (currentX > LEFT_WIDTH / 2) {
-      currentX = LEFT_WIDTH; // 右へスナップ（削除表示）
-    } else if (currentX < -RIGHT_WIDTH / 2) {
-      currentX = -RIGHT_WIDTH; // 左へスナップ（店舗/項目表示）
-    } else {
-      currentX = 0; // 戻す
+  const onPointerDown = (e) => {
+    // 他行が開いていたら閉じる
+    if (openSwipeContent && openSwipeContent !== contentEl) {
+      openSwipeContent.style.transform = 'translateX(0)';
+      openSwipeContent = null;
     }
+    contentEl.setPointerCapture?.(e.pointerId);
+    startX = e.clientX;
+    currentX = 0;
+    dragging = true;
+    lockedAxis = null;
+    contentEl.style.transition = 'none';
+  };
+
+  const onPointerMove = (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - startX;
+    // 軸ロック（最初の移動で判定）
+    if (!lockedAxis) {
+      if (Math.abs(dx) > 6) lockedAxis = 'x';
+      else return; // まだ判定しない
+    }
+    if (lockedAxis !== 'x') return;
+
+    currentX = clamp(dx);
     contentEl.style.transform = `translateX(${currentX}px)`;
   };
 
-  contentEl.addEventListener('touchend', release);
-  contentEl.addEventListener('touchcancel', release);
+  const snap = () => {
+    // スナップ位置決定
+    if (currentX > LEFT_WIDTH * 0.5) {
+      currentX = LEFT_WIDTH;         // 右にスナップ（削除表示）
+      openSwipeContent = contentEl;
+    } else if (currentX < -RIGHT_WIDTH * 0.5) {
+      currentX = -RIGHT_WIDTH;       // 左にスナップ（店舗/項目表示）
+      openSwipeContent = contentEl;
+    } else {
+      currentX = 0;                  // 戻す
+      if (openSwipeContent === contentEl) openSwipeContent = null;
+    }
+    contentEl.style.transition = '';
+    contentEl.style.transform = `translateX(${currentX}px)`;
+  };
+
+  const onPointerUp = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    contentEl.releasePointerCapture?.(e.pointerId);
+    snap();
+  };
+  const onPointerCancel = onPointerUp;
+
+  contentEl.addEventListener('pointerdown', onPointerDown);
+  contentEl.addEventListener('pointermove', onPointerMove);
+  contentEl.addEventListener('pointerup', onPointerUp);
+  contentEl.addEventListener('pointercancel', onPointerCancel);
 
   // 右側（削除）ボタン
   contentEl.parentElement.querySelector('.btn-mobile-delete')?.addEventListener('click', (e) => {
     e.stopPropagation();
-    if (typeof onDelete === 'function') onDelete();
+    const tr = contentEl.closest('tr');
+    const id = tr?.dataset?.taskId;
+    if (id) deleteTask(id);
   });
 
   // タップで閉じる
   contentEl.addEventListener('click', () => {
-    if (currentX !== 0) {
-      currentX = 0;
-      contentEl.style.transform = 'translateX(0)';
+    if (openSwipeContent === contentEl) {
+      openSwipeContent.style.transform = 'translateX(0)';
+      openSwipeContent = null;
     }
   });
-}
-
-/* =========================
-   Badging
-   ========================= */
-function updateOverdueBadge(num) {
-  if (navigator.setAppBadge) {
-    navigator.setAppBadge(num).catch(err => console.error("バッジ設定エラー:", err));
-  }
 }
