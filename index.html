@@ -6,99 +6,56 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>店舗診断表 & タスク管理（設定付き）</title>
 
-  <link rel="stylesheet" type="text/css" href="styles.css">
-  <style>
-    a.btn-link.nav-link {
-      text-align: left;
-      display: block;
-      padding: 0.5rem 1rem;
-    }
-
-    /* === Tasks: Mobile/Tablet swipe rows === */
-    @media (max-width: 991.98px) {
-      #tasksTable td.d-lg-table-cell,
-      #tasksTable th.d-lg-table-cell {
-        display: none !important; /* SP/Tabは「店舗」「項目」「操作」列を隠す */
-      }
-      #tasksTable td.mobile-swipe-cell {
-        padding: 0 !important;
-        border-top: none;
-      }
-      .swipe-row {
-        position: relative;
-        overflow: hidden;
-        background: #fff;
-      }
-      .swipe-content {
-        position: relative;
-        padding: 12px 16px;
-        transition: transform 0.18s ease;
-        will-change: transform;
-        background: #fff;
-        z-index: 2;
-        touch-action: pan-y; /* 縦スクロールを優先。横はpointerで処理 */
-      }
-      .swipe-reveal-left,
-      .swipe-reveal-right {
-        position: absolute;
-        top: 0;
-        bottom: 0;
-        display: flex;
-        align-items: center;
-        z-index: 1; /* contentより下でOK（contentをずらして見せる） */
-      }
-      .swipe-reveal-left {
-        left: 0;
-        width: 120px;              /* 右スワイプで露出（削除） */
-        justify-content: center;
-        background: #fff0f0;
-        border-right: 1px solid #f1c0c0;
-      }
-      .swipe-reveal-right {
-        right: 0;
-        width: 220px;              /* 左スワイプで露出（店舗/項目） */
-        padding: 0 12px;
-        justify-content: flex-start;
-        background: #f8f9fa;
-        border-left: 1px solid #e9ecef;
-      }
-      .swipe-meta {
-        margin-top: 4px;
-        display: flex;
-        gap: 16px;
-        font-size: 0.9rem;
-        color: #6c757d;
-      }
-      .swipe-label {
-        font-weight: 600;
-        margin-right: 4px;
-      }
-      /* ボタンが確実に押せるように */
-      .swipe-reveal-left .btn,
-      .swipe-reveal-right .btn {
-        pointer-events: auto;
-      }
-    }
-
-    /* 通知バッジ色 */
-    .badge-perm-default { background: #6c757d; }
-    .badge-perm-granted { background: #198754; }
-    .badge-perm-denied  { background: #dc3545; }
-  </style>
-
-  <!-- Bootstrap CDN -->
+  <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
     crossorigin="anonymous"></script>
 
+  <!-- Bootstrap Icons（小さなアイコン用） -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
   <link rel="shortcut icon" href="./static/icons/favicon.ico">
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    a.btn-link.nav-link { text-align: left; display: block; padding: 0.5rem 1rem; }
+
+    /* 通知バッジ色 */
+    .badge-perm-default { background: #6c757d; }
+    .badge-perm-granted { background: #198754; }
+    .badge-perm-denied  { background: #dc3545; }
+
+    /* ===== モバイル用 list-group のスワイプ見た目 ===== */
+    .lg-swipe-wrap { position: relative; overflow: hidden; }
+    .lg-swipe-bg {
+      position: absolute; inset: 0;
+      background: #ffe5e5;
+      display: flex; align-items: center; justify-content: flex-end;
+      padding-right: 16px; pointer-events: none;
+    }
+    .lg-swipe-fore { position: relative; transition: transform .15s ease; will-change: transform; background: #fff; }
+
+    /* カード内のテキスト省略 */
+    .text-truncate-2 {
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* PCではテーブル、モバイルはリスト表示 */
+    @media (max-width: 767.98px) {
+      #tasksTableWrapper { display: none !important; }
+      #tasksListMobileWrapper { display: block !important; }
+    }
+    @media (min-width: 768px) {
+      #tasksTableWrapper { display: block !important; }
+      #tasksListMobileWrapper { display: none !important; }
+    }
+  </style>
 </head>
 
 <body>
-  <!-- モバイル用：Offcanvas ハンバーガーメニュー -->
+  <!-- モバイル：オフキャンバス -->
   <nav class="navbar navbar-light bg-light d-md-none">
     <div class="container-fluid">
       <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
@@ -109,7 +66,7 @@
         aria-labelledby="offcanvasNavbarLabel">
         <div class="offcanvas-header">
           <h5 class="offcanvas-title" id="offcanvasNavbarLabel">店舗管理ツール</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+          <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
         </div>
         <div class="offcanvas-body">
           <ul class="navbar-nav flex-column">
@@ -137,23 +94,15 @@
       <nav class="col-md-2 d-none d-md-block bg-light sidebar">
         <div class="position-sticky pt-3">
           <ul class="nav flex-column">
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showDiagnosticSection()">店舗診断表</button>
-            </li>
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showTaskSection()">タスク一覧</button>
-            </li>
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showSettingsSection()">設定</button>
-            </li>
-            <li class="nav-item">
-              <a class="btn btn-link nav-link" href="dashboard.html">ダッシュボード</a>
-            </li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showDiagnosticSection()">店舗診断表</button></li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showTaskSection()">タスク一覧</button></li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showSettingsSection()">設定</button></li>
+            <li class="nav-item"><a class="btn btn-link nav-link" href="dashboard.html">ダッシュボード</a></li>
           </ul>
         </div>
       </nav>
 
-      <!-- メインコンテンツ -->
+      <!-- メイン -->
       <main class="col-md-10 ms-sm-auto px-md-4">
         <div class="container mt-3">
 
@@ -164,14 +113,12 @@
 
               <div class="mb-3 d-inline-block me-3">
                 <label for="storeSelect" class="form-label">店舗選択:</label>
-                <select id="storeSelect" class="form-select w-auto d-inline-block"
-                  onchange="fetchAndDisplayDiagnostics()"></select>
+                <select id="storeSelect" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayDiagnostics()"></select>
               </div>
 
               <div class="mb-3 d-inline-block">
                 <label for="monthSelect" class="form-label">月選択:</label>
-                <select id="monthSelect" class="form-select w-auto d-inline-block"
-                  onchange="fetchAndDisplayDiagnostics()"></select>
+                <select id="monthSelect" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayDiagnostics()"></select>
               </div>
             </div>
 
@@ -185,70 +132,74 @@
             <!-- 追加フォーム -->
             <div class="border rounded p-3 mb-3 mt-3">
               <h2 class="h5 mb-3">タスク追加</h2>
-              <div class="mb-2">
-                <label for="taskAddStoreSelect" class="form-label">店舗名</label>
-                <select id="taskAddStoreSelect" class="form-select w-auto d-inline-block">
-                  <option value="">店舗を選択</option>
-                </select>
+              <div class="row g-2 align-items-end">
+                <div class="col-12 col-md-auto">
+                  <label for="taskAddStoreSelect" class="form-label">店舗名</label>
+                  <select id="taskAddStoreSelect" class="form-select">
+                    <option value="">店舗を選択</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md-auto">
+                  <label for="taskAddItemInput" class="form-label">項目</label>
+                  <select id="taskAddItemInput" class="form-select">
+                    <option value="">項目を選択</option>
+                    <option value="売上">売上</option><option value="単価">単価</option>
+                    <option value="人時売上高">人時売上高</option><option value="F">F</option>
+                    <option value="D">D</option><option value="人件費">人件費</option>
+                    <option value="臨店シート">臨店シート</option><option value="CS調査">CS調査</option>
+                    <option value="面談進捗">面談進捗</option><option value="ESアンケート">ESアンケート</option>
+                    <option value="PAリファラル採用">PAリファラル採用</option>
+                  </select>
+                </div>
+                <div class="col-12 col-md">
+                  <label for="taskAddDetailInput" class="form-label">タスク</label>
+                  <input id="taskAddDetailInput" class="form-control" placeholder="例: 棚割り変更">
+                </div>
+                <div class="col-6 col-md-auto">
+                  <label for="taskAddDueInput" class="form-label">期限</label>
+                  <input type="date" id="taskAddDueInput" class="form-control">
+                </div>
+                <div class="col-6 col-md-auto">
+                  <label for="taskAddOwnerInput" class="form-label">責任者</label>
+                  <input id="taskAddOwnerInput" class="form-control" placeholder="例: 佐藤">
+                </div>
+                <div class="col-12 col-md-auto">
+                  <button class="btn btn-primary w-100" onclick="addTaskFromList()"><i class="bi bi-plus-lg me-1"></i>追加</button>
+                </div>
               </div>
-
-              <div class="mb-2">
-                <label for="taskAddItemInput" class="form-label">項目</label>
-                <select id="taskAddItemInput" class="form-select w-auto d-inline-block">
-                  <option value="">項目を選択</option>
-                  <option value="売上">売上</option>
-                  <option value="単価">単価</option>
-                  <option value="人時売上高">人時売上高</option>
-                  <option value="F">F</option>
-                  <option value="D">D</option>
-                  <option value="人件費">人件費</option>
-                  <option value="臨店シート">臨店シート</option>
-                  <option value="CS調査">CS調査</option>
-                  <option value="面談進捗">面談進捗</option>
-                  <option value="ESアンケート">ESアンケート</option>
-                  <option value="PAリファラル採用">PAリファラル採用</option>
-                </select>
-              </div>
-
-              <div class="mb-2">
-                <label for="taskAddDetailInput" class="form-label">タスク</label>
-                <input type="text" class="form-control w-auto d-inline-block" id="taskAddDetailInput" placeholder="例: 棚割り変更">
-              </div>
-              <div class="mb-2">
-                <label for="taskAddDueInput" class="form-label">期限</label>
-                <input type="date" class="form-control w-auto d-inline-block" id="taskAddDueInput">
-              </div>
-              <div class="mb-2">
-                <label for="taskAddOwnerInput" class="form-label">責任者</label>
-                <input type="text" class="form-control w-auto d-inline-block" id="taskAddOwnerInput" placeholder="例: 佐藤">
-              </div>
-              <button class="btn btn-primary" onclick="addTaskFromList()">追加</button>
             </div>
 
-            <!-- 店舗選択 -->
-            <div class="mb-3 d-inline-block me-3">
-              <label for="storeSelectTask" class="form-label">店舗選択:</label>
-              <select id="storeSelectTask" class="form-select w-auto d-inline-block" onchange="fetchAndDisplayTasks()"></select>
-              <button id="refreshTasksBtn" class="btn btn-outline-secondary ms-2" onclick="refreshTasks()">
-                <i class="bi bi-arrow-repeat"></i> 最新表示
+            <!-- フィルタ -->
+            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+              <div>
+                <label for="storeSelectTask" class="form-label me-2 mb-0">店舗選択:</label>
+                <select id="storeSelectTask" class="form-select d-inline-block w-auto" onchange="fetchAndDisplayTasks()"></select>
+              </div>
+              <button id="refreshTasksBtn" class="btn btn-outline-secondary" onclick="refreshTasks?.()">
+                <i class="bi bi-arrow-repeat me-1"></i>最新表示
               </button>
             </div>
 
-            <!-- タスク一覧表 -->
-            <div class="table-responsive">
+            <!-- PC: テーブル -->
+            <div id="tasksTableWrapper" class="table-responsive">
               <table id="tasksTable" class="table table-bordered table-striped align-middle">
                 <thead class="table-light">
                   <tr>
-                    <th id="thStore" class="sort-header d-none d-lg-table-cell" onclick="sortTasks('店舗名')">店舗</th>
-                    <th id="thItem"  class="sort-header d-none d-lg-table-cell" onclick="sortTasks('項目')">項目</th>
+                    <th id="thStore" class="sort-header" onclick="sortTasks('店舗名')">店舗</th>
+                    <th id="thItem"  class="sort-header" onclick="sortTasks('項目')">項目</th>
                     <th id="thTask"  class="sort-header" onclick="sortTasks('タスク')">タスク</th>
                     <th id="thDue"   class="sort-header" onclick="sortTasks('期限')">期限</th>
                     <th id="thOwner" class="sort-header" onclick="sortTasks('責任者')">責任者</th>
-                    <th class="d-none d-lg-table-cell">操作</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
               </table>
+            </div>
+
+            <!-- モバイル: list-group -->
+            <div id="tasksListMobileWrapper" class="my-2" style="display:none;">
+              <div id="tasksListMobile" class="list-group list-group-flush"></div>
             </div>
           </section>
 
@@ -290,7 +241,6 @@
         </div>
         <div class="modal-body">
           <input type="hidden" id="modalDiagnosticId">
-
           <div class="mb-3">
             <label for="modalHypothesisInput" class="form-label fw-bold">仮説:</label>
             <textarea id="modalHypothesisInput" class="form-control" rows="3" placeholder="仮説を入力または確認"></textarea>
@@ -303,44 +253,36 @@
             <button type="button" class="btn btn-primary mb-3" onclick="updateDiagnostic()">仮説・ネクストアクションを更新</button>
           </div>
           <hr />
-
           <h5 class="mb-3">タスク送信</h5>
           <div class="mb-2">
             <label for="modalTaskItem" class="form-label">項目</label>
             <select id="modalTaskItem" class="form-select">
               <option value="">項目を選択</option>
-              <option value="売上">売上</option>
-              <option value="単価">単価</option>
-              <option value="人時売上高">人時売上高</option>
-              <option value="F">F</option>
-              <option value="D">D</option>
-              <option value="人件費">人件費</option>
-              <option value="臨店シート">臨店シート</option>
-              <option value="CS調査">CS調査</option>
-              <option value="面談進捗">面談進捗</option>
-              <option value="ESアンケート">ESアンケート</option>
+              <option value="売上">売上</option><option value="単価">単価</option>
+              <option value="人時売上高">人時売上高</option><option value="F">F</option>
+              <option value="D">D</option><option value="人件費">人件費</option>
+              <option value="臨店シート">臨店シート</option><option value="CS調査">CS調査</option>
+              <option value="面談進捗">面談進捗</option><option value="ESアンケート">ESアンケート</option>
               <option value="PAリファラル採用">PAリファラル採用</option>
             </select>
           </div>
           <div class="mb-2">
             <label for="modalTaskDetail" class="form-label">タスク</label>
-            <input type="text" class="form-control" id="modalTaskDetail" placeholder="例：棚割り見直し">
+            <input id="modalTaskDetail" class="form-control" placeholder="例：棚割り見直し">
           </div>
           <div class="mb-2">
             <label for="modalTaskDue" class="form-label">期限</label>
-            <input type="date" class="form-control" id="modalTaskDue">
+            <input type="date" id="modalTaskDue" class="form-control">
           </div>
           <div class="mb-3">
             <label for="modalTaskOwner" class="form-label">責任者</label>
-            <input type="text" class="form-control" id="modalTaskOwner" placeholder="例：黒木">
+            <input id="modalTaskOwner" class="form-control" placeholder="例：黒木">
           </div>
           <div class="d-grid">
             <button type="button" class="btn btn-success" onclick="addTaskFromModal()">タスク送信</button>
           </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
-        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button></div>
       </div>
     </div>
   </div>
@@ -348,5 +290,4 @@
   <!-- スクリプト -->
   <script type="module" src="scripts.js"></script>
 </body>
-
 </html>

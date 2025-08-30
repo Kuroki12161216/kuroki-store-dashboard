@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZ3lsenlweXVuYmNldHZxdW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4MTk3MjgsImV4cCI6MjA1NjM5NTcyOH0.tRwiVkMiCIvONpjyAJAt3FZ2iUIy6ihaAiHMtZ3bFI0";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ===== DOM参照 ===== */
+/* ===== DOM ===== */
 const diagnosticSection = document.getElementById("diagnosticSection");
 const taskSection = document.getElementById("taskSection");
 
@@ -18,6 +18,7 @@ const diagnosticsCardContainer = document.getElementById("diagnosticsCardContain
 
 const storeSelectTask = document.getElementById("storeSelectTask");
 const tasksTableBody = document.querySelector("#tasksTable tbody");
+const tasksListMobile = document.getElementById("tasksListMobile");
 
 const taskAddStoreSelect = document.getElementById("taskAddStoreSelect");
 const taskAddItemInput = document.getElementById("taskAddItemInput");
@@ -39,9 +40,6 @@ let currentSortColumn = null;
 let currentSortDir = "asc";
 let bootstrapModal = null;
 
-// いま開いているスワイプ行（他を閉じるため）
-let openSwipeContent = null;
-
 /* ===== 初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
@@ -49,9 +47,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
   subscribeTasksRealtime();
-  applyResponsiveTasksUI(); // 初回適用
 });
-window.addEventListener("resize", applyResponsiveTasksUI);
 
 /* ===== 画面切替 ===== */
 window.showDiagnosticSection = function () {
@@ -63,7 +59,6 @@ window.showTaskSection = function () {
   diagnosticSection.style.display = 'none';
   taskSection.style.display = 'block';
   document.getElementById('settingsSection').style.display = 'none';
-  applyResponsiveTasksUI();
 };
 window.showSettingsSection = function () {
   diagnosticSection.style.display = 'none';
@@ -184,32 +179,22 @@ window.fetchAndDisplayDiagnostics = async function () {
     cardDiv.className = "card h-100 shadow-sm";
     cardDiv.onclick = () => openDiagnosticModal(row);
 
-    const body = document.createElement("div");
-    body.className = "card-body";
+    const body = document.createElement("div"); body.className = "card-body";
+    const title = document.createElement("h5"); title.className = "card-title"; title.textContent = row.項目 || "(項目なし)";
 
-    const title = document.createElement("h5");
-    title.className = "card-title";
-    title.textContent = row.項目 || "(項目なし)";
-
-    const diff = document.createElement("span");
-    diff.style.fontWeight = "bold";
+    const diff = document.createElement("span"); diff.style.fontWeight = "bold";
     if (row.差異 === "〇") { diff.style.color = "red"; diff.textContent = " 〇"; }
     else { diff.style.color = "black"; diff.textContent = " ×"; }
     title.appendChild(diff);
 
-    const diffP = document.createElement("p");
-    diffP.className = "card-text";
+    const diffP = document.createElement("p"); diffP.className = "card-text";
     diffP.textContent = `目標: ${row.目標数値}, 実績: ${row.実績}`;
 
     const hypoP = createTruncatedParagraph("仮説", row.仮説 || "", 50);
     const actionP = createTruncatedParagraph("ネクスト", row.ネクストアクション || "", 50);
 
-    body.appendChild(title);
-    body.appendChild(diffP);
-    body.appendChild(hypoP);
-    body.appendChild(actionP);
-    cardDiv.appendChild(body);
-    colDiv.appendChild(cardDiv);
+    body.append(title, diffP, hypoP, actionP);
+    cardDiv.appendChild(body); colDiv.appendChild(cardDiv);
     diagnosticsCardContainer.appendChild(colDiv);
   });
 };
@@ -254,16 +239,11 @@ window.collapseText = function (btn, encodedFullText, label) {
 };
 
 function openDiagnosticModal(row) {
-  if (!bootstrapModal) {
-    bootstrapModal = new bootstrap.Modal(document.getElementById("diagnosticModal"), {});
-  }
+  if (!bootstrapModal) bootstrapModal = new bootstrap.Modal(document.getElementById("diagnosticModal"), {});
   modalDiagnosticId.value = row.id;
   modalHypothesisInput.value = row.仮説 || "";
   modalNextActionInput.value = row.ネクストアクション || "";
-  modalTaskItem.value = "";
-  modalTaskDetail.value = "";
-  modalTaskDue.value = "";
-  modalTaskOwner.value = "";
+  modalTaskItem.value = ""; modalTaskDetail.value = ""; modalTaskDue.value = ""; modalTaskOwner.value = "";
   bootstrapModal.show();
 }
 
@@ -272,14 +252,14 @@ window.updateDiagnostic = async function () {
   const hypothesisValue = modalHypothesisInput.value;
   const nextActionValue = modalNextActionInput.value;
   if (!id) return alert("IDが取得できませんでした");
-  const { error } = await supabase.from("店舗診断表").update({
-    仮説: hypothesisValue, ネクストアクション: nextActionValue
-  }).eq("id", id);
+  const { error } = await supabase.from("店舗診断表")
+    .update({ 仮説: hypothesisValue, ネクストアクション: nextActionValue })
+    .eq("id", id);
   if (error) alert("更新エラー:" + error.message);
   else { alert("仮説・ネクストアクションを更新しました"); fetchAndDisplayDiagnostics(); }
 };
 
-/* ===== タスク：追加/取得/描画 ===== */
+/* ===== タスク ===== */
 window.addTaskFromModal = async function () {
   const diagId = modalDiagnosticId.value;
   const item = modalTaskItem.value;
@@ -289,9 +269,9 @@ window.addTaskFromModal = async function () {
   if (!diagId) return alert("診断表IDが存在しません");
   if (!item || !taskDetail) return alert("「項目」「タスク」は必須です");
 
-  const { error } = await supabase.from("タスクテーブル").insert([{
-    項目: item, タスク: taskDetail, 期限: dueDate, 責任者: owner, 店舗診断表_id: diagId,
-  }]);
+  const { error } = await supabase.from("タスクテーブル").insert([
+    { 項目: item, タスク: taskDetail, 期限: dueDate, 責任者: owner, 店舗診断表_id: diagId }
+  ]);
   if (error) alert("タスク追加エラー:" + error.message);
   else { alert("タスクを追加しました"); fetchAndDisplayTasks(); }
 };
@@ -302,10 +282,9 @@ window.addTaskFromList = async function () {
   const detail = taskAddDetailInput.value;
   const due = taskAddDueInput.value;
   const owner = taskAddOwnerInput.value;
-
   if (!storeName || !item || !detail) return alert("店舗名、項目、タスクは必須です");
 
-  // 期限から診断月（前月 yyyymm）を算出
+  // 前月 yyyymm
   const dueDate = new Date(due);
   const dueHumanMonth = dueDate.getMonth() + 1;
   let diagnosticYear = dueDate.getFullYear();
@@ -321,16 +300,13 @@ window.addTaskFromList = async function () {
 
   const diagId = diagData[diagData.length - 1].id;
 
-  const { error: insertError } = await supabase.from("タスクテーブル").insert([{
-    項目: item, タスク: detail, 期限: due, 責任者: owner, 店舗診断表_id: diagId,
-  }]);
+  const { error: insertError } = await supabase.from("タスクテーブル").insert([
+    { 項目: item, タスク: detail, 期限: due, 責任者: owner, 店舗診断表_id: diagId }
+  ]);
   if (insertError) alert("タスク追加エラー:" + insertError.message);
   else {
     alert("タスクを追加しました");
-    taskAddItemInput.value = "";
-    taskAddDetailInput.value = "";
-    taskAddDueInput.value = "";
-    taskAddOwnerInput.value = "";
+    taskAddItemInput.value = ""; taskAddDetailInput.value = ""; taskAddDueInput.value = ""; taskAddOwnerInput.value = "";
     fetchAndDisplayTasks();
   }
 };
@@ -365,21 +341,20 @@ window.fetchAndDisplayTasks = async function () {
 };
 
 function renderTasks() {
+  // PC: テーブル
   tasksTableBody.innerHTML = "";
-  let overdueCount = 0;
+  // Mobile: list
+  tasksListMobile.innerHTML = "";
 
+  let overdueCount = 0;
   tasksDataGlobal.forEach((row) => {
+    // ---------- PC テーブル行 ----------
     const tr = document.createElement("tr");
     tr.dataset.taskId = row.id;
 
-    // 期限 → ISO正規化 + 表示=mm月dd日
     const iso = parseToISO(row.期限);
     const jp = iso ? isoToJPMonthDay(iso) : (row.期限 || "");
-
-    if (iso && new Date(iso) < todayMidnight()) {
-      tr.classList.add("table-danger");
-      overdueCount++;
-    }
+    if (iso && new Date(iso) < todayMidnight()) { tr.classList.add("table-danger"); overdueCount++; }
 
     const storeTd = document.createElement("td"); storeTd.textContent = row.店舗名 || "";
     const itemTd  = document.createElement("td"); itemTd.textContent  = row.項目 || "";
@@ -390,40 +365,155 @@ function renderTasks() {
     const operationTd = document.createElement("td");
     const delBtn = document.createElement("button");
     delBtn.textContent = "削除";
-    delBtn.className = "btn btn-danger btn-sm btn-delete";
+    delBtn.className = "btn btn-danger btn-sm";
     delBtn.onclick = () => deleteTask(row.id);
     operationTd.appendChild(delBtn);
 
-    tr.appendChild(storeTd);
-    tr.appendChild(itemTd);
-    tr.appendChild(taskTd);
-    tr.appendChild(dueTd);
-    tr.appendChild(ownerTd);
-    tr.appendChild(operationTd);
-
-    // === ここからモバイル用スワイプセル ===
-    const mobileTd = document.createElement('td');
-    mobileTd.className = 'd-lg-none mobile-swipe-cell';
-    mobileTd.colSpan = 6;
-    mobileTd.innerHTML = buildMobileSwipeHTML({
-      store: row.店舗名 || "-", item: row.項目 || "-",
-      task: row.タスク || "(タスク未設定)", due: jp || "—", owner: row.責任者 || "—"
-    });
-    tr.appendChild(mobileTd);
-    setupSwipeRow(mobileTd.querySelector('.swipe-content')); // Pointer Events 付与
-
+    tr.append(storeTd, itemTd, taskTd, dueTd, ownerTd, operationTd);
     tasksTableBody.appendChild(tr);
+
+    // ---------- モバイル list-group アイテム ----------
+    const li = document.createElement("div");
+    li.className = "list-group-item p-0";
+
+    const bg = document.createElement("div");
+    bg.className = "lg-swipe-bg";
+    bg.innerHTML = `<span class="fw-bold text-danger-emphasis"><i class="bi bi-trash3 me-1"></i>左へスワイプで削除</span>`;
+
+    const fore = document.createElement("div");
+    fore.className = "lg-swipe-fore p-3";
+    fore.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="pe-3">
+          <div class="fw-semibold text-truncate-2">${escapeHTML(row.タスク || "(タスク未設定)")}</div>
+          <div class="small text-muted mt-1">
+            <span class="me-3"><i class="bi bi-shop"></i> ${escapeHTML(row.店舗名 || "-")}</span>
+            <span class="me-3"><i class="bi bi-list-task"></i> ${escapeHTML(row.項目 || "-")}</span>
+            <span><i class="bi bi-person"></i> ${escapeHTML(row.責任者 || "-")}</span>
+          </div>
+        </div>
+        <span class="badge rounded-pill ${iso && new Date(iso) < todayMidnight() ? 'text-bg-danger' : 'text-bg-light text-body border'}">
+          <i class="bi bi-calendar-event"></i> ${escapeHTML(jp || "—")}
+        </span>
+      </div>
+    `;
+
+    const wrap = document.createElement("div");
+    wrap.className = "lg-swipe-wrap";
+    wrap.append(bg, fore);
+    li.appendChild(wrap);
+    tasksListMobile.appendChild(li);
+
+    addMobileSwipe(li, fore, async () => {
+      return await confirmAndDelete(row.id); // true=削除実行 / false=取り消し
+    });
   });
 
   updateOverdueBadge(overdueCount);
-  applyResponsiveTasksUI();
 }
 
+/* ===== モバイル スワイプ（左で削除） ===== */
+function addMobileSwipe(container, foreEl, onConfirmDelete) {
+  const THRESHOLD = 96;
+  let startX = 0, dx = 0, dragging = false;
+
+  const getX = (e) => e.touches ? e.touches[0].clientX : e.clientX;
+
+  const onStart = (e) => { dragging = true; startX = getX(e); dx = 0; foreEl.style.transition = 'none'; };
+  const onMove  = (e) => {
+    if (!dragging) return;
+    dx = Math.min(0, getX(e) - startX);
+    foreEl.style.transform = `translateX(${dx}px)`;
+  };
+  const onEnd   = async () => {
+    if (!dragging) return;
+    dragging = false;
+    const fired = Math.abs(dx) > THRESHOLD;
+    foreEl.style.transition = '';
+    if (!fired) { foreEl.style.transform = 'translateX(0)'; return; }
+    const ok = await onConfirmDelete();
+    if (ok) container.remove();
+    else foreEl.style.transform = 'translateX(0)';
+  };
+
+  foreEl.addEventListener('touchstart', onStart, { passive: true });
+  foreEl.addEventListener('touchmove',  onMove,  { passive: true });
+  foreEl.addEventListener('touchend',   onEnd);
+  foreEl.addEventListener('mousedown',  onStart);
+  document.addEventListener('mousemove', (e)=> dragging && onMove(e));
+  document.addEventListener('mouseup',   onEnd);
+}
+
+/* ===== トースト：削除 or 取り消し ===== */
+/**
+ * 下部にトーストを表示し、「削除」or「取り消し」をユーザーに選ばせる
+ * 戻り値: Promise<"delete" | "cancel">
+ */
+function showDeleteToast() {
+  return new Promise((resolve) => {
+    const bar = document.createElement('div');
+    bar.className = 'shadow-sm';
+    bar.style.position = 'fixed';
+    bar.style.left = '50%';
+    bar.style.transform = 'translateX(-50%)';
+    bar.style.bottom = '16px';
+    bar.style.background = '#212529';
+    bar.style.color = '#fff';
+    bar.style.padding = '12px 16px';
+    bar.style.borderRadius = '8px';
+    bar.style.zIndex = 9999;
+    bar.style.maxWidth = '92vw';
+    bar.style.display = 'flex';
+    bar.style.alignItems = 'center';
+    bar.style.gap = '12px';
+
+    const msg = document.createElement('span');
+    msg.textContent = 'このタスクを削除しますか？';
+
+    const btnCancel = document.createElement('button');
+    btnCancel.className = 'btn btn-sm btn-light';
+    btnCancel.textContent = '取り消し';
+
+    const btnDelete = document.createElement('button');
+    btnDelete.className = 'btn btn-sm btn-danger';
+    btnDelete.textContent = '削除';
+
+    bar.append(msg, btnCancel, btnDelete);
+    document.body.appendChild(bar);
+
+    const cleanup = (result) => {
+      bar.remove();
+      resolve(result);
+    };
+    btnCancel.addEventListener('click', () => cleanup('cancel'));
+    btnDelete.addEventListener('click', () => cleanup('delete'));
+  });
+}
+
+/**
+ * トーストで確認→「削除」選択時に Supabase 削除を実行
+ * 戻り値: Promise<boolean>  true=削除完了 / false=取り消し
+ */
+async function confirmAndDelete(id) {
+  const action = await showDeleteToast();
+  if (action !== 'delete') return false;
+
+  try {
+    const { error } = await supabase.from("タスクテーブル").delete().eq("id", id);
+    if (error) throw error;
+    // PCとモバイル双方に反映
+    fetchAndDisplayTasks();
+    return true;
+  } catch (e) {
+    alert("削除エラー: " + e.message);
+    return false;
+  }
+}
+
+/* ===== PCボタンの削除もトースト確認に統一 ===== */
 async function deleteTask(id) {
-  if (!confirm("このタスクを削除しますか？")) return;
-  const { error } = await supabase.from("タスクテーブル").delete().eq("id", id);
-  if (error) alert("削除エラー:" + error.message);
-  else { alert("削除しました"); fetchAndDisplayTasks(); }
+  const ok = await confirmAndDelete(id);
+  if (ok) fetchAndDisplayTasks();
 }
 
 /* ===== Realtime ===== */
@@ -444,10 +534,7 @@ window.sortTasks = function (column) {
   tasksDataGlobal.sort((a, b) => {
     let va = a[column] ?? "";
     let vb = b[column] ?? "";
-    if (column === "期限") {
-      va = parseToISO(va) || "";
-      vb = parseToISO(vb) || "";
-    }
+    if (column === "期限") { va = parseToISO(va) || ""; vb = parseToISO(vb) || ""; }
     return currentSortDir === "asc"
       ? String(va).localeCompare(String(vb))
       : String(vb).localeCompare(String(va));
@@ -463,10 +550,8 @@ function updateSortIndicators(column, dir) {
   const thTask  = document.getElementById("thTask");
   const thDue   = document.getElementById("thDue");
   const thOwner = document.getElementById("thOwner");
-  thStore.textContent = "店舗";
-  thItem.textContent  = "項目";
-  thTask.textContent  = "タスク";
-  thDue.textContent   = "期限";
+  thStore.textContent = "店舗"; thItem.textContent  = "項目";
+  thTask.textContent  = "タスク"; thDue.textContent   = "期限";
   thOwner.textContent = "責任者";
   if (!column) return;
   const arrow = dir === "asc" ? " ▲" : " ▼";
@@ -477,14 +562,14 @@ function updateSortIndicators(column, dir) {
   if (column === "責任者")  thOwner.textContent += arrow;
 }
 
-/* ===== CSV パース & upsert ===== */
+/* ===== CSV ===== */
 export function parseCsvFile(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const lines = String(e.target.result).split(/\r?\n/);
-        lines.shift(); // header
+        lines.shift();
         const results = [];
         for (const line of lines) {
           if (!line.trim()) continue;
@@ -526,159 +611,18 @@ function parseToISO(s) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const m = String(s).match(/^(\d{4})[\/\-年](\d{1,2})[\/\-月](\d{1,2})/);
   if (m) {
-    const y = m[1].padStart(4,'0');
-    const mo = m[2].padStart(2,'0');
-    const d = m[3].padStart(2,'0');
+    const y = m[1].padStart(4,'0'); const mo = m[2].padStart(2,'0'); const d = m[3].padStart(2,'0');
     return `${y}-${mo}-${d}`;
   }
   const dt = new Date(s);
   if (!isNaN(dt)) {
-    const y = dt.getFullYear();
-    const mo = String(dt.getMonth()+1).padStart(2,'0');
-    const da = String(dt.getDate()).padStart(2,'0');
+    const y = dt.getFullYear(); const mo = String(dt.getMonth()+1).padStart(2,'0'); const da = String(dt.getDate()).padStart(2,'0');
     return `${y}-${mo}-${da}`;
   }
   return null;
 }
 function isoToJPMonthDay(iso) { const [, mo, da] = iso.split('-'); return `${mo}月${da}日`; }
-function escapeHTML(s) {
-  return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-}
+function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
-/* ===== レスポンシブ（列の表示/非表示だけ） ===== */
-function applyResponsiveTasksUI() {
-  const isMobile = window.innerWidth < 992;
-  // ここでは列の表示切替のみ。スワイプ行はrender時に必ず生成しているためOK
-  const rows = Array.from(tasksTableBody.querySelectorAll('tr'));
-  rows.forEach(tr => {
-    const tds = tr.querySelectorAll('td');
-    if (tds.length < 7) return; // 6列 + 1モバイルセル
-    if (isMobile) {
-      [0,1,5].forEach(i => tds[i]?.classList.add('d-none','d-lg-table-cell')); // 店舗/項目/操作
-    } else {
-      [0,1,5].forEach(i => tds[i]?.classList.remove('d-none','d-lg-table-cell'));
-      // PCに戻ったら開いていたスワイプを閉じる
-      const content = tr.querySelector('.swipe-content');
-      if (content) content.style.transform = 'translateX(0)';
-      if (openSwipeContent === tr.querySelector('.swipe-content')) openSwipeContent = null;
-    }
-  });
-}
-
-/* ===== スワイプUI（Pointer Events版） ===== */
-function buildMobileSwipeHTML({ store, item, task, due, owner }) {
-  return `
-    <div class="swipe-row">
-      <!-- 右スワイプ（削除） -->
-      <div class="swipe-reveal-left">
-        <button type="button" class="btn btn-danger btn-sm btn-mobile-delete">削除</button>
-      </div>
-
-      <!-- 左スワイプ（店舗/項目） -->
-      <div class="swipe-reveal-right">
-        <div class="small">
-          <div><span class="swipe-label">店舗</span>${escapeHTML(store || '-')}</div>
-          <div><span class="swipe-label">項目</span>${escapeHTML(item  || '-')}</div>
-        </div>
-      </div>
-
-      <!-- 通常表示 -->
-      <div class="swipe-content">
-        <div class="fw-bold">${escapeHTML(task)}</div>
-        <div class="swipe-meta">
-          <div><span class="swipe-label">期限</span>${escapeHTML(due)}</div>
-          <div><span class="swipe-label">責任者</span>${escapeHTML(owner)}</div>
-        </div>
-      </div>
-    </div>`;
-}
-
-/**
- * 1行分のスワイプをセットアップ（pointer系で安定動作）
- * - 右スワイプ: +X → 削除（左側パネル）を露出
- * - 左スワイプ: -X → 店舗/項目（右側パネル）を露出
- */
-function setupSwipeRow(contentEl) {
-  const LEFT_WIDTH  = 120; // 右スワイプで露出（削除）
-  const RIGHT_WIDTH = 220; // 左スワイプで露出（店舗/項目）
-
-  let startX = 0;
-  let currentX = 0;
-  let dragging = false;
-  let lockedAxis = null; // 'x' or 'y'（縦スクロールと競合しないように）
-
-  const clamp = (x) => Math.max(-RIGHT_WIDTH, Math.min(LEFT_WIDTH, x));
-
-  const onPointerDown = (e) => {
-    // 他行が開いていたら閉じる
-    if (openSwipeContent && openSwipeContent !== contentEl) {
-      openSwipeContent.style.transform = 'translateX(0)';
-      openSwipeContent = null;
-    }
-    contentEl.setPointerCapture?.(e.pointerId);
-    startX = e.clientX;
-    currentX = 0;
-    dragging = true;
-    lockedAxis = null;
-    contentEl.style.transition = 'none';
-  };
-
-  const onPointerMove = (e) => {
-    if (!dragging) return;
-    const dx = e.clientX - startX;
-    // 軸ロック（最初の移動で判定）
-    if (!lockedAxis) {
-      if (Math.abs(dx) > 6) lockedAxis = 'x';
-      else return; // まだ判定しない
-    }
-    if (lockedAxis !== 'x') return;
-
-    currentX = clamp(dx);
-    contentEl.style.transform = `translateX(${currentX}px)`;
-  };
-
-  const snap = () => {
-    // スナップ位置決定
-    if (currentX > LEFT_WIDTH * 0.5) {
-      currentX = LEFT_WIDTH;         // 右にスナップ（削除表示）
-      openSwipeContent = contentEl;
-    } else if (currentX < -RIGHT_WIDTH * 0.5) {
-      currentX = -RIGHT_WIDTH;       // 左にスナップ（店舗/項目表示）
-      openSwipeContent = contentEl;
-    } else {
-      currentX = 0;                  // 戻す
-      if (openSwipeContent === contentEl) openSwipeContent = null;
-    }
-    contentEl.style.transition = '';
-    contentEl.style.transform = `translateX(${currentX}px)`;
-  };
-
-  const onPointerUp = (e) => {
-    if (!dragging) return;
-    dragging = false;
-    contentEl.releasePointerCapture?.(e.pointerId);
-    snap();
-  };
-  const onPointerCancel = onPointerUp;
-
-  contentEl.addEventListener('pointerdown', onPointerDown);
-  contentEl.addEventListener('pointermove', onPointerMove);
-  contentEl.addEventListener('pointerup', onPointerUp);
-  contentEl.addEventListener('pointercancel', onPointerCancel);
-
-  // 右側（削除）ボタン
-  contentEl.parentElement.querySelector('.btn-mobile-delete')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const tr = contentEl.closest('tr');
-    const id = tr?.dataset?.taskId;
-    if (id) deleteTask(id);
-  });
-
-  // タップで閉じる
-  contentEl.addEventListener('click', () => {
-    if (openSwipeContent === contentEl) {
-      openSwipeContent.style.transform = 'translateX(0)';
-      openSwipeContent = null;
-    }
-  });
-}
+/* 期限超過バッジ（必要ならここで表示先へ反映） */
+function updateOverdueBadge(/*count*/) {}
