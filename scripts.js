@@ -378,7 +378,7 @@ function renderTasks() {
 
     const bg = document.createElement("div");
     bg.className = "lg-swipe-bg";
-    bg.innerHTML = `<span class="fw-bold text-danger-emphasis"><i class="bi bi-trash3 me-1"></i>左へスワイプで削除</span>`;
+    bg.innerHTML = `<span class="fw-bold text-danger-emphasis"><i class="bi bi-trash3 me-1"></i></span>`;
 
     const fore = document.createElement("div");
     fore.className = "lg-swipe-fore p-3";
@@ -444,49 +444,129 @@ function addMobileSwipe(container, foreEl, onConfirmDelete) {
   document.addEventListener('mouseup',   onEnd);
 }
 
-/* ===== トースト：削除 or 取り消し ===== */
-/**
- * 下部にトーストを表示し、「削除」or「取り消し」をユーザーに選ばせる
- * 戻り値: Promise<"delete" | "cancel">
- */
+/* ===== トースト：削除 or 取り消し（中央ポップアップ＆背景固定／説明文なし） ===== */
 function showDeleteToast() {
   return new Promise((resolve) => {
-    const bar = document.createElement('div');
-    bar.className = 'shadow-sm';
-    bar.style.position = 'fixed';
-    bar.style.left = '50%';
-    bar.style.transform = 'translateX(-50%)';
-    bar.style.bottom = '16px';
-    bar.style.background = '#212529';
-    bar.style.color = '#fff';
-    bar.style.padding = '12px 16px';
-    bar.style.borderRadius = '8px';
-    bar.style.zIndex = 9999;
-    bar.style.maxWidth = '92vw';
-    bar.style.display = 'flex';
-    bar.style.alignItems = 'center';
-    bar.style.gap = '12px';
+    document.getElementById('__confirmOverlay')?.remove();
 
-    const msg = document.createElement('span');
-    msg.textContent = 'このタスクを削除しますか？';
+    // 背景スクロール固定
+    const scrollY = window.scrollY || window.pageYOffset;
+    const body = document.body;
+    const prevBodyStyle = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
+
+    // オーバーレイ
+    const overlay = document.createElement('div');
+    overlay.id = '__confirmOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.45)';
+    overlay.style.backdropFilter = 'blur(1px)';
+    overlay.style.zIndex = '1050';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '24px';
+
+    // ダイアログ
+    const dialog = document.createElement('div');
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', '__confirmTitle');
+    dialog.tabIndex = -1;
+    dialog.className = 'shadow-lg';
+    dialog.style.background = '#212529';
+    dialog.style.color = '#fff';
+    dialog.style.borderRadius = '12px';
+    dialog.style.width = 'min(520px, 92vw)';
+    dialog.style.maxWidth = '92vw';
+    dialog.style.padding = '20px 20px 16px';
+    dialog.style.boxShadow = '0 10px 24px rgba(0,0,0,.35)';
+    dialog.style.zIndex = '1060';
+    dialog.style.outline = 'none';
+
+    // タイトル（説明文は削除）
+    const title = document.createElement('div');
+    title.id = '__confirmTitle';
+    title.className = 'fw-semibold';
+    title.style.fontSize = '1.1rem';
+    title.style.marginBottom = '10px';
+    title.textContent = 'このタスクを削除しますか？';
+
+    // ボタン行
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '10px';
+    btnRow.style.marginTop = '6px';
+    btnRow.style.flexWrap = 'wrap';
 
     const btnCancel = document.createElement('button');
-    btnCancel.className = 'btn btn-sm btn-light';
-    btnCancel.textContent = '取り消し';
+    btnCancel.className = 'btn btn-light btn-sm flex-fill';
+    btnCancel.type = 'button';
+    btnCancel.textContent = '取消';
 
     const btnDelete = document.createElement('button');
-    btnDelete.className = 'btn btn-sm btn-danger';
+    btnDelete.className = 'btn btn-danger btn-sm flex-fill';
+    btnDelete.type = 'button';
     btnDelete.textContent = '削除';
 
-    bar.append(msg, btnCancel, btnDelete);
-    document.body.appendChild(bar);
+    btnRow.append(btnCancel, btnDelete);
+    dialog.append(title, btnRow);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
 
-    const cleanup = (result) => {
-      bar.remove();
-      resolve(result);
+    // フォーカス制御
+    setTimeout(() => dialog.focus(), 0);
+    const focusables = [btnCancel, btnDelete];
+    const onKeydown = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); cleanup('cancel'); }
+      if (e.key === 'Enter')  { e.preventDefault(); cleanup('delete'); }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const idx = focusables.indexOf(document.activeElement);
+        const next = e.shiftKey ? (idx <= 0 ? focusables.length - 1 : idx - 1)
+                                : (idx >= focusables.length - 1 ? 0 : idx + 1);
+        focusables[next].focus();
+      }
     };
+    dialog.addEventListener('keydown', onKeydown);
+
+    // 背景スクロール抑止
+    const stopScroll = (e) => e.preventDefault();
+    overlay.addEventListener('wheel', stopScroll, { passive: false });
+    overlay.addEventListener('touchmove', stopScroll, { passive: false });
+
+    // オーバーレイ外クリックで取消（不要なら無効化可）
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup('cancel');
+    });
+
     btnCancel.addEventListener('click', () => cleanup('cancel'));
     btnDelete.addEventListener('click', () => cleanup('delete'));
+
+    function cleanup(result) {
+      dialog.removeEventListener('keydown', onKeydown);
+      overlay.removeEventListener('wheel', stopScroll);
+      overlay.removeEventListener('touchmove', stopScroll);
+      overlay.remove();
+
+      // 背景スクロール解除
+      body.style.position = prevBodyStyle.position;
+      body.style.top = prevBodyStyle.top;
+      body.style.width = prevBodyStyle.width;
+      body.style.overflow = prevBodyStyle.overflow;
+      window.scrollTo(0, scrollY);
+
+      resolve(result);
+    }
   });
 }
 
