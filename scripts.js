@@ -1,5 +1,4 @@
 // scripts.js (type="module")
-
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 /* ===== Supabase設定 ===== */
@@ -9,14 +8,9 @@ const SUPABASE_ANON_KEY =
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ===== DOM ===== */
-const diagnosticSection = document.getElementById("diagnosticSection");
 const taskSection = document.getElementById("taskSection");
 const settingsSection = document.getElementById("settingsSection");
-const dashboardSection = document.getElementById("dashboardSection"); // ← SPA用ダッシュボード
-
-const storeSelect = document.getElementById("storeSelect");
-const monthSelect = document.getElementById("monthSelect");
-const diagnosticsCardContainer = document.getElementById("diagnosticsCardContainer");
+const dashboardSection = document.getElementById("dashboardSection");
 
 const storeSelectTask = document.getElementById("storeSelectTask");
 const tasksTableBody = document.querySelector("#tasksTable tbody");
@@ -28,19 +22,10 @@ const taskAddDetailInput = document.getElementById("taskAddDetailInput");
 const taskAddDueInput = document.getElementById("taskAddDueInput");
 const taskAddOwnerInput = document.getElementById("taskAddOwnerInput");
 
-const modalDiagnosticId = document.getElementById("modalDiagnosticId");
-const modalHypothesisInput = document.getElementById("modalHypothesisInput");
-const modalNextActionInput = document.getElementById("modalNextActionInput");
-const modalTaskItem = document.getElementById("modalTaskItem");
-const modalTaskDetail = document.getElementById("modalTaskDetail");
-const modalTaskDue = document.getElementById("modalTaskDue");
-const modalTaskOwner = document.getElementById("modalTaskOwner");
-
 /* ===== 状態 ===== */
 let tasksDataGlobal = [];
 let currentSortColumn = null;
 let currentSortDir = "asc";
-let bootstrapModal = null;
 
 /* ===== ダッシュボード状態 ===== */
 let dashboardInitialized = false;
@@ -49,29 +34,19 @@ let salesChart = null, unitChart = null, labourChart = null;
 /* ===== 初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
-  await initMonthDropdown();
-  await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
   subscribeTasksRealtime();
 
-  // ハッシュルーティング（任意）
-  if (location.hash === "#dashboard") {
-    showDashboardSection();
-  }
+  // 初期表示はダッシュボード
+  await showDashboardSection();
 });
 
 /* ===== 画面切替 ===== */
 function hideAllSections() {
-  diagnosticSection && (diagnosticSection.style.display = 'none');
   taskSection && (taskSection.style.display = 'none');
   settingsSection && (settingsSection.style.display = 'none');
   dashboardSection && (dashboardSection.style.display = 'none');
 }
-window.showDiagnosticSection = function () {
-  hideAllSections();
-  diagnosticSection.style.display = 'block';
-  history.replaceState(null, "", "#diagnostic");
-};
 window.showTaskSection = function () {
   hideAllSections();
   taskSection.style.display = 'block';
@@ -84,7 +59,7 @@ window.showSettingsSection = function () {
 };
 window.showDashboardSection = async function () {
   hideAllSections();
-  if (!dashboardSection) { alert("dashboardSection が見つかりません。index.html にセクションを追加してください。"); return; }
+  if (!dashboardSection) { alert("dashboardSection が見つかりません。index.html を確認してください。"); return; }
   dashboardSection.style.display = 'block';
   history.replaceState(null, "", "#dashboard");
   if (!dashboardInitialized) {
@@ -144,163 +119,35 @@ window.handleDragEnter = handleDragEnter;
 window.handleDragOver = handleDragOver;
 window.handleDrop = handleDrop;
 
-/* ===== 店舗/月 初期化 ===== */
+/* ===== 店舗 初期化（タスク用のみ） ===== */
 async function initStoreDropdowns() {
   const { data, error } = await supabase.from("店舗診断表").select("店舗名");
   if (error) { console.error("店舗一覧取得エラー:", error); return; }
   const storeNames = [...new Set((data || []).map((item) => item.店舗名))];
 
-  storeNames.forEach((name) => {
-    const opt = document.createElement("option");
-    opt.value = name; opt.textContent = name;
-    storeSelect.appendChild(opt);
-  });
-
+  // タスク一覧のフィルタ
   if (!storeSelectTask.querySelector('option[value="all"]')) {
     const allOpt = document.createElement("option");
     allOpt.value = "all"; allOpt.textContent = "全店舗";
     storeSelectTask.appendChild(allOpt);
   }
   storeNames.forEach((name) => {
-    const opt = document.createElement("option");
-    opt.value = name; opt.textContent = name;
-    storeSelectTask.appendChild(opt);
+    const opt1 = document.createElement("option");
+    opt1.value = name; opt1.textContent = name;
+    storeSelectTask.appendChild(opt1);
   });
 
+  // タスク追加フォームの店舗
   storeNames.forEach((name) => {
-    const opt = document.createElement("option");
-    opt.value = name; opt.textContent = name;
-    taskAddStoreSelect.appendChild(opt);
+    const opt2 = document.createElement("option");
+    opt2.value = name; opt2.textContent = name;
+    taskAddStoreSelect.appendChild(opt2);
   });
 }
-
-async function initMonthDropdown() {
-  const { data, error } = await supabase.from("店舗診断表").select("月");
-  if (error) { console.error("月一覧取得エラー:", error); return; }
-  const distinctMonths = [...new Set((data || []).map((item) => item.月))];
-  distinctMonths.forEach((m) => {
-    const opt = document.createElement("option");
-    opt.value = m; opt.textContent = m;
-    monthSelect.appendChild(opt);
-  });
-}
-
-/* ===== 診断表 ===== */
-window.fetchAndDisplayDiagnostics = async function () {
-  const selectedStore = storeSelect.value;
-  const selectedMonth = monthSelect.value;
-
-  let query = supabase.from("店舗診断表").select("*").order("id", { ascending: true });
-  if (selectedStore && selectedStore !== "all") query = query.eq("店舗名", selectedStore);
-  if (selectedMonth && selectedMonth !== "all") query = query.eq("月", selectedMonth);
-
-  const { data, error } = await query;
-  if (error) { console.error("店舗診断表取得エラー:", error); return; }
-
-  diagnosticsCardContainer.innerHTML = "";
-  (data || []).forEach((row) => {
-    const colDiv = document.createElement("div");
-    colDiv.className = "col";
-
-    const cardDiv = document.createElement("div");
-    cardDiv.className = "card h-100 shadow-sm";
-    cardDiv.onclick = () => openDiagnosticModal(row);
-
-    const body = document.createElement("div"); body.className = "card-body";
-    const title = document.createElement("h5"); title.className = "card-title"; title.textContent = row.項目 || "(項目なし)";
-
-    const diff = document.createElement("span"); diff.style.fontWeight = "bold";
-    if (row.差異 === "〇") { diff.style.color = "red"; diff.textContent = " 〇"; }
-    else { diff.style.color = "black"; diff.textContent = " ×"; }
-    title.appendChild(diff);
-
-    const diffP = document.createElement("p"); diffP.className = "card-text";
-    diffP.textContent = `目標: ${row.目標数値}, 実績: ${row.実績}`;
-
-    const hypoP = createTruncatedParagraph("仮説", row.仮説 || "", 50);
-    const actionP = createTruncatedParagraph("ネクスト", row.ネクストアクション || "", 50);
-
-    body.append(title, diffP, hypoP, actionP);
-    cardDiv.appendChild(body); colDiv.appendChild(cardDiv);
-    diagnosticsCardContainer.appendChild(colDiv);
-  });
-};
-
-function createTruncatedParagraph(label, fullText, limit = 60) {
-  const p = document.createElement("p");
-  p.className = "card-text";
-  if (!fullText) { p.textContent = `${label}: `; return p; }
-  if (fullText.length <= limit) { p.textContent = `${label}: ${fullText}`; return p; }
-  const truncated = fullText.substring(0, limit);
-  p.innerHTML = `
-    <span class="fw-bold">${label}:</span>
-    <span class="js-short-text">${truncated}...</span>
-    <button type="button" class="btn btn-sm btn-outline-primary toggle-btn"
-      onclick="event.stopPropagation(); expandText(this, '${encodeURIComponent(fullText)}', '${label}')">
-      もっと読む
-    </button>`;
-  return p;
-}
-window.expandText = function (btn, encodedFullText, label) {
-  const fullText = decodeURIComponent(encodedFullText);
-  const p = btn.parentElement;
-  p.innerHTML = `
-    <span class="fw-bold">${label}:</span>
-    <span class="js-full-text">${fullText}</span>
-    <button type="button" class="btn btn-sm btn-outline-danger toggle-btn"
-      onclick="event.stopPropagation(); collapseText(this, '${encodeURIComponent(fullText)}', '${label}')">
-      閉じる
-    </button>`;
-};
-window.collapseText = function (btn, encodedFullText, label) {
-  const fullText = decodeURIComponent(encodedFullText);
-  const truncated = fullText.substring(0, 60);
-  const p = btn.parentElement;
-  p.innerHTML = `
-    <span class="fw-bold">${label}:</span>
-    <span class="js-short-text">${truncated}...</span>
-    <button type="button" class="btn btn-sm btn-outline-primary toggle-btn"
-      onclick="event.stopPropagation(); expandText(this, '${encodeURIComponent(fullText)}', '${label}')">
-      もっと読む
-    </button>`;
-};
-
-function openDiagnosticModal(row) {
-  if (!bootstrapModal) bootstrapModal = new bootstrap.Modal(document.getElementById("diagnosticModal"), {});
-  modalDiagnosticId.value = row.id;
-  modalHypothesisInput.value = row.仮説 || "";
-  modalNextActionInput.value = row.ネクストアクション || "";
-  modalTaskItem.value = ""; modalTaskDetail.value = ""; modalTaskDue.value = ""; modalTaskOwner.value = "";
-  bootstrapModal.show();
-}
-
-window.updateDiagnostic = async function () {
-  const id = modalDiagnosticId.value;
-  const hypothesisValue = modalHypothesisInput.value;
-  const nextActionValue = modalNextActionInput.value;
-  if (!id) return alert("IDが取得できませんでした");
-  const { error } = await supabase.from("店舗診断表")
-    .update({ 仮説: hypothesisValue, ネクストアクション: nextActionValue })
-    .eq("id", id);
-  if (error) alert("更新エラー:" + error.message);
-  else { alert("仮説・ネクストアクションを更新しました"); fetchAndDisplayDiagnostics(); }
-};
 
 /* ===== タスク ===== */
 window.addTaskFromModal = async function () {
-  const diagId = modalDiagnosticId.value;
-  const item = modalTaskItem.value;
-  const taskDetail = modalTaskDetail.value;
-  const dueDate = modalTaskDue.value;
-  const owner = modalTaskOwner.value;
-  if (!diagId) return alert("診断表IDが存在しません");
-  if (!item || !taskDetail) return alert("「項目」「タスク」は必須です");
-
-  const { error } = await supabase.from("タスクテーブル").insert([
-    { 項目: item, タスク: taskDetail, 期限: dueDate, 責任者: owner, 店舗診断表_id: diagId }
-  ]);
-  if (error) alert("タスク追加エラー:" + error.message);
-  else { alert("タスクを追加しました"); fetchAndDisplayTasks(); }
+  alert('このUIではモーダル送信は未実装です。タスク一覧の「タスク追加」をご利用ください。');
 };
 
 window.addTaskFromList = async function () {
@@ -368,14 +215,11 @@ window.fetchAndDisplayTasks = async function () {
 };
 
 function renderTasks() {
-  // PC: テーブル
   tasksTableBody.innerHTML = "";
-  // Mobile: list
   tasksListMobile.innerHTML = "";
 
   let overdueCount = 0;
   tasksDataGlobal.forEach((row) => {
-    // ---------- PC テーブル行 ----------
     const tr = document.createElement("tr");
     tr.dataset.taskId = row.id;
 
@@ -399,7 +243,6 @@ function renderTasks() {
     tr.append(storeTd, itemTd, taskTd, dueTd, ownerTd, operationTd);
     tasksTableBody.appendChild(tr);
 
-    // ---------- モバイル list-group アイテム ----------
     const li = document.createElement("div");
     li.className = "list-group-item p-0";
 
@@ -432,7 +275,7 @@ function renderTasks() {
     tasksListMobile.appendChild(li);
 
     addMobileSwipe(li, fore, async () => {
-      return await confirmAndDelete(row.id); // true=削除実行 / false=取り消し
+      return await confirmAndDelete(row.id);
     });
   });
 
@@ -471,12 +314,11 @@ function addMobileSwipe(container, foreEl, onConfirmDelete) {
   document.addEventListener('mouseup',   onEnd);
 }
 
-/* ===== トースト：削除 or 取り消し（LINE風・狭幅オーバーレイ） ===== */
+/* ===== トースト：削除 or 取り消し ===== */
 function showDeleteToast() {
   return new Promise((resolve) => {
     document.getElementById('__confirmOverlay')?.remove();
 
-    // 背景固定
     const scrollY = window.scrollY || window.pageYOffset;
     const body = document.body;
     const prevBodyStyle = {
@@ -490,7 +332,6 @@ function showDeleteToast() {
     body.style.width = '100%';
     body.style.overflow = 'hidden';
 
-    // 薄いオーバーレイ
     const overlay = document.createElement('div');
     overlay.id = '__confirmOverlay';
     overlay.style.position = 'fixed';
@@ -502,7 +343,6 @@ function showDeleteToast() {
     overlay.style.justifyContent = 'center';
     overlay.style.padding = '16px';
 
-    // ダイアログ
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
@@ -521,7 +361,6 @@ function showDeleteToast() {
     dialog.style.opacity = '0';
     dialog.style.transition = 'opacity .14s ease, transform .14s ease';
 
-    // タイトル
     const title = document.createElement('div');
     title.id = '__confirmTitle';
     title.className = 'fw-semibold';
@@ -529,7 +368,6 @@ function showDeleteToast() {
     title.style.marginBottom = '12px';
     title.textContent = 'このタスクを削除しますか？';
 
-    // ボタン行
     const btnRow = document.createElement('div');
     btnRow.style.display = 'flex';
     btnRow.style.gap = '8px';
@@ -556,18 +394,16 @@ function showDeleteToast() {
     btnCancel.textContent = '取消';
     commonBtnStyle(btnCancel);
 
-    btnRow.append(btnCancel, btnDelete); // 左=取消 / 右=削除
+    btnRow.append(btnCancel, btnDelete);
     dialog.append(title, btnRow);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    // フェードイン
     requestAnimationFrame(() => {
       dialog.style.opacity = '1';
       dialog.style.transform = 'translateY(0)';
     });
 
-    // フォーカス制御
     setTimeout(() => dialog.focus(), 0);
     const focusables = [btnCancel, btnDelete];
     const onKeydown = (e) => {
@@ -583,12 +419,10 @@ function showDeleteToast() {
     };
     dialog.addEventListener('keydown', onKeydown);
 
-    // 背景のスクロール抑止
     const stopScroll = (e) => e.preventDefault();
     overlay.addEventListener('wheel', stopScroll, { passive: false });
     overlay.addEventListener('touchmove', stopScroll, { passive: false });
 
-    // 外側クリックで取消
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) cleanup('cancel');
     });
@@ -602,7 +436,6 @@ function showDeleteToast() {
       overlay.removeEventListener('touchmove', stopScroll);
       overlay.remove();
 
-      // 背景固定解除＆元位置
       body.style.position = prevBodyStyle.position;
       body.style.top = prevBodyStyle.top;
       body.style.width = prevBodyStyle.width;
@@ -614,10 +447,6 @@ function showDeleteToast() {
   });
 }
 
-/**
- * トーストで確認→「削除」選択時に Supabase 削除を実行
- * 戻り値: Promise<boolean>  true=削除完了 / false=取り消し
- */
 async function confirmAndDelete(id) {
   const action = await showDeleteToast();
   if (action !== 'delete') return false;
@@ -625,7 +454,6 @@ async function confirmAndDelete(id) {
   try {
     const { error } = await supabase.from("タスクテーブル").delete().eq("id", id);
     if (error) throw error;
-    // PCとモバイル双方に反映
     fetchAndDisplayTasks();
     return true;
   } catch (e) {
@@ -634,7 +462,6 @@ async function confirmAndDelete(id) {
   }
 }
 
-/* ===== PCボタンの削除もトースト確認に統一 ===== */
 async function deleteTask(id) {
   const ok = await confirmAndDelete(id);
   if (ok) fetchAndDisplayTasks();
@@ -747,8 +574,6 @@ function parseToISO(s) {
 }
 function isoToJPMonthDay(iso) { const [, mo, da] = iso.split('-'); return `${mo}月${da}日`; }
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-
-/* 期限超過バッジ（必要ならここで表示先へ反映） */
 function updateOverdueBadge(/*count*/) {}
 
 /* ======================================================================
@@ -770,7 +595,7 @@ async function initDashboard() {
   await ensureChartJs();
 
   // ダッシュボード内のDOMを取得（dashboardSection 配下）
-  const $ = (id) => dashboardSection.querySelector(id);
+  const $ = (sel) => dashboardSection.querySelector(sel);
 
   const storeSelectDash = $("#store-select");
   const chartStoreSelect = $("#chart-store-select");
@@ -779,7 +604,19 @@ async function initDashboard() {
   const toggleYoy = $("#toggle-yoy");
   const rankTableBody = $("#score-ranking-table tbody");
 
-  // KPIカードIDと項目対応
+  // 🔽 仮説モーダル関連
+  const modal = $("#hypo-modal");
+  const modalClose = $("#hypo-close");
+  const titleStore = $("#hypo-title-store");
+  const titleSub = $("#hypo-title-sub");
+  const inputId = $("#hypo-id");
+  const inputStore = $("#hypo-store");
+  const inputMonth = $("#hypo-month");
+  const inputItem = $("#hypo-item");
+  const textareaHypo = $("#hypo-text");
+  const textareaNext = $("#next-text");
+  const btnSave = $("#hypo-save");
+
   const kpiList = [
     { id: 'kpi-sales', item: '売上' },
     { id: 'kpi-unitprice', item: '単価' },
@@ -808,15 +645,12 @@ async function initDashboard() {
   const ctxUnit = $("#unitPriceChart")?.getContext("2d");
   const ctxLabour = $("#labourSalesChart")?.getContext("2d");
 
-  // Utils（ダッシュボード用）
+  // Utils
   const toYYYYMM = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
   const labelYYYYMM = (yyyymm) => `${yyyymm.slice(0, 4)}/${yyyymm.slice(4, 6)}`;
   const formatYen = (v) => '¥ ' + Number(v ?? 0).toLocaleString();
   const currentFYStartYear = (() => { const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1; return (m >= 4) ? y : (y - 1); })();
-
-  function getFiscalMonths(fyStartYear) {
-    const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr;
-  }
+  function getFiscalMonths(fyStartYear) { const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr; }
 
   // 店舗一覧
   async function getUniqueStores() {
@@ -951,7 +785,6 @@ async function initDashboard() {
   }
 
   async function renderScoreRanking(month) {
-    // 直近6店舗でランキング（必要なら店舗選択UIに合わせて変更）
     const stores = await getUniqueStores();
     const targetStores = stores.slice(0, 6);
     if (targetStores.length === 0) return;
@@ -983,7 +816,7 @@ async function initDashboard() {
     });
   }
 
-  // KPI更新
+  // KPI更新（値・バッジ・矢印）
   async function updateAllKPIs(store, dateStr) {
     if (!store || !dateStr) return;
     const month = dateStr.slice(0, 7).replace("-", "");
@@ -1082,17 +915,73 @@ async function initDashboard() {
     const rec = data.find(r => r.項目 === item); return rec ? Number(rec.実績) : null;
   }
 
-  // ✎ボタン配置 & カードクリック（ダッシュボード内モーダルは別HTMLなら無効化してOK）
-  function attachEditButtonsAndCardClicks() {
+  // ====== 仮説／ネクスト編集モーダル ======
+  async function openHypoModal(item) {
+    const store = storeSelectDash.value;
+    const monthStr = (targetDateInput.value || '').slice(0,7).replace('-', '');
+    if (!store || !monthStr) { alert('店舗と日付を選択してください。'); return; }
+
+    // レコード取得（最新1件）
+    const { data, error } = await supabase
+      .from('店舗診断表')
+      .select('id, 仮説, ネクストアクション')
+      .eq('店舗名', store)
+      .eq('月', monthStr)
+      .eq('項目', item)
+      .order('id', { ascending: false })
+      .limit(1);
+
+    if (error) { console.error(error); alert('レコード取得に失敗しました'); return; }
+    if (!data?.length) { alert('該当の店舗・月・項目のレコードが見つかりません。CSVを取り込み済みか確認してください。'); return; }
+
+    const row = data[0];
+
+    // タイトル・フィールド初期化
+    titleStore.textContent = store;
+    titleSub.textContent = `${monthStr.slice(0,4)}/${monthStr.slice(4,6)}・${item}`;
+    inputId.value = row.id;
+    inputStore.value = store;
+    inputMonth.value = monthStr;
+    inputItem.value = item;
+    textareaHypo.value = row.仮説 || '';
+    textareaNext.value = row.ネクストアクション || '';
+
+    // 表示
+    modal.removeAttribute('hidden');
+  }
+
+  // モーダル操作
+  modalClose?.addEventListener('click', () => modal.setAttribute('hidden', ''));
+  modal?.addEventListener('click', (e) => { if (e.target === modal) modal.setAttribute('hidden', ''); });
+  btnSave?.addEventListener('click', async () => {
+    const id = inputId.value;
+    const hypo = textareaHypo.value;
+    const next = textareaNext.value;
+    if (!id) return alert('IDが見つかりません。');
+
+    const { error } = await supabase
+      .from('店舗診断表')
+      .update({ 仮説: hypo, ネクストアクション: next })
+      .eq('id', id);
+
+    if (error) { alert('保存に失敗しました: ' + error.message); return; }
+    alert('保存しました');
+    modal.setAttribute('hidden', '');
+  });
+
+  // 鉛筆ボタンを各カードに設置
+  function attachEditButtons() {
     kpiList.forEach(({ id, item }) => {
-      const card = dashboardSection.querySelector(`#${id}`); if (!card) return;
-      // 詳細モーダルがSPAにある場合のみ活性化。なければ編集だけにする/何もしない
-      // ここでは編集ボタンのみ配置（例）
+      const card = dashboardSection.querySelector(`#${id}`);
+      if (!card) return;
       if (!card.querySelector('.edit-btn')) {
-        const btn = document.createElement('button'); btn.className = 'edit-btn'; btn.title = `${item}を編集`; btn.innerText = '✎';
+        const btn = document.createElement('button');
+        btn.className = 'edit-btn';
+        btn.title = `${item} の仮説／ネクストを編集`;
+        btn.innerText = '✎';
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
-          alert('編集モーダルはSPA版に未配置です。（必要なら index.html にモーダルを組み込んでください）');
+          openHypoModal(item);
         });
         card.appendChild(btn);
       }
@@ -1104,7 +993,7 @@ async function initDashboard() {
   await populateStoreSelects();
   chartStoreSelect.value = storeSelectDash.value;
   await populateFiscalYears(storeSelectDash.value);
-  attachEditButtonsAndCardClicks();
+  attachEditButtons();
   await updateAllKPIs(storeSelectDash.value, targetDateInput.value);
   await renderAllCharts();
 
