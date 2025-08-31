@@ -1,20 +1,22 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>店舗診断表 & タスク管理（設定付き）</title>
+  <title>店舗診断表 & タスク管理（設定付き / ダッシュボード統合）</title>
 
   <!-- Bootstrap -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
-    integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+        integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
-    crossorigin="anonymous"></script>
+          integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+          crossorigin="anonymous"></script>
 
-  <!-- Bootstrap Icons（小さなアイコン用） -->
+  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Chart.js（ダッシュボード用） -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <link rel="shortcut icon" href="./static/icons/favicon.ico">
   <link rel="manifest" href="manifest.json">
@@ -27,7 +29,7 @@
     .badge-perm-granted { background: #198754; }
     .badge-perm-denied  { background: #dc3545; }
 
-    /* ===== モバイル用 list-group のスワイプ見た目 ===== */
+    /* ===== タスク（モバイル用 list-group スワイプの見た目） ===== */
     .lg-swipe-wrap { position: relative; overflow: hidden; }
     .lg-swipe-bg {
       position: absolute; inset: 0;
@@ -36,11 +38,7 @@
       padding-right: 16px; pointer-events: none;
     }
     .lg-swipe-fore { position: relative; transition: transform .15s ease; will-change: transform; background: #fff; }
-
-    /* カード内のテキスト省略 */
-    .text-truncate-2 {
-      display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
+    .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
     /* PCではテーブル、モバイルはリスト表示 */
     @media (max-width: 767.98px) {
@@ -50,6 +48,112 @@
     @media (min-width: 768px) {
       #tasksTableWrapper { display: block !important; }
       #tasksListMobileWrapper { display: none !important; }
+    }
+
+    /* ===================== ダッシュボード用スタイル（スコープ化） ===================== */
+    #dashboardSection { --gap: 16px; --header-h: 56px; }
+    #dashboardSection .db-container { max-width: 1200px; margin: 0 auto; padding: 16px; background: #fff; }
+    #dashboardSection .top-section { display: grid; grid-template-columns: 1fr; grid-gap: var(--gap); margin-bottom: 24px; }
+    @media (min-width: 1024px) {
+      #dashboardSection .top-section { grid-template-columns: repeat(5,1fr); }
+      #dashboardSection .top-section .header-card { grid-column: span 3; }
+      #dashboardSection #kpi-sales { grid-column: span 1; }
+      #dashboardSection #kpi-unitprice { grid-column: span 1; }
+    }
+    #dashboardSection .header-card {
+      background:#fff;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.08);
+      padding:12px 16px;display:flex;align-items:center;justify-content:space-between
+    }
+    #dashboardSection .header-controls { display:grid;grid-template-columns:1fr;gap:10px }
+    #dashboardSection .header-card select,
+    #dashboardSection .header-card input[type="month"]{
+      padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fafafa;min-height:40px
+    }
+    @media (min-width:768px){
+      #dashboardSection .header-controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    }
+
+    #dashboardSection .kpi-card{
+      background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);
+      padding:16px;display:flex;flex-direction:column;justify-content:space-between;
+      position:relative;min-height:110px;cursor:pointer
+    }
+    #dashboardSection .kpi-card h3{font-size:clamp(12px,2.2vw,14px);color:#666;margin-bottom:8px}
+    #dashboardSection .kpi-card .value{font-size:clamp(22px,5.5vw,28px);font-weight:700;color:#2b3a67;line-height:1.2}
+    #dashboardSection .kpi-card .trend{display:flex;align-items:center;margin-top:8px;font-size:12px}
+    #dashboardSection .kpi-card .trend.up{color:#31b057}
+    #dashboardSection .kpi-card .trend.down{color:#e12d39}
+    #dashboardSection .kpi-card .trend .icon{margin-right:4px;font-size:14px}
+    #dashboardSection .edit-btn{position:absolute;top:8px;right:8px;border:none;background:transparent;cursor:pointer;font-size:18px;color:#98a2b3;padding:6px;border-radius:8px}
+    #dashboardSection .edit-btn:hover{background:#f2f4f7;color:#2b3a67}
+    #dashboardSection .mini-score{position:absolute;top:8px;right:44px;background:#eef3ff;color:#2b3a67;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:700}
+    #dashboardSection .target-badge{position:absolute;right:8px;bottom:8px;background:#f9fafb;border:1px solid #e5e7eb;color:#667085;padding:3px 10px;border-radius:999px;font-size:11px}
+    #dashboardSection .kpi-row{display:grid;grid-gap:var(--gap)}
+    @media (min-width:768px) and (max-width:1023.98px){#dashboardSection .kpi-row{grid-template-columns:repeat(2,1fr)}}
+    @media (min-width:1024px){#dashboardSection .kpi-row{grid-template-columns:repeat(5,1fr)}}
+
+    /* モバイル：全体2カラム化 + コンテンツ要素を全幅に */
+    @media (max-width: 767.98px){
+      #dashboardSection .db-container{display:grid;grid-template-columns:repeat(2,1fr);grid-gap:var(--gap)}
+      #dashboardSection .top-section, #dashboardSection .kpi-row.row-2, #dashboardSection .kpi-row.row-3{display:contents}
+      #dashboardSection .header-card{grid-column:1/-1}
+      #dashboardSection .panel, #dashboardSection .chart-toolbar, #dashboardSection .chart-section{grid-column:1/-1}
+      #dashboardSection .kpi-card{min-height:110px}
+    }
+
+    #dashboardSection .chart-toolbar{
+      background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:12px 16px;margin-bottom:10px;
+      display:flex;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:var(--header-h);z-index:50
+    }
+    #dashboardSection .chart-toolbar .group{display:flex;gap:8px;align-items:center}
+    #dashboardSection .chart-toolbar select{
+      padding:10px 12px;border:1px solid #d0d5dd;border-radius:8px;background:#fafafa;min-height:40px
+    }
+
+    #dashboardSection .chart-section{display:grid;grid-template-columns:1fr;grid-gap:24px;margin-bottom:24px}
+    #dashboardSection .chart-card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);position:relative}
+    #dashboardSection .chart-card canvas{position:absolute;inset:16px}
+    @media (max-width:767.98px){#dashboardSection .chart-card{height:280px}}
+    @media (min-width:768px){#dashboardSection .chart-card{height:0;padding-bottom:56.25%}}
+
+    #dashboardSection .panel{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:16px;margin-bottom:24px}
+    #dashboardSection .panel h4{margin-bottom:10px}
+    #dashboardSection .rank-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    #dashboardSection table.rank{width:100%;border-collapse:collapse;min-width:520px}
+    #dashboardSection table.rank th, #dashboardSection table.rank td{padding:10px;border-bottom:1px solid #eee;text-align:left;font-size:14px;white-space:nowrap}
+    #dashboardSection table.rank th{color:#666}
+    #dashboardSection .rank-badge{display:inline-block;min-width:28px;text-align:center;border-radius:999px;padding:2px 8px;background:#f0f3ff}
+    #dashboardSection .gold{background:#fff7d6} .silver{background:#f2f4f7} .bronze{background:#ffe9d9}
+
+    /* カスタムモーダル（ダッシュボード専用） */
+    #dashboardSection .modal-lite{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:1000}
+    #dashboardSection .modal-lite[hidden]{display:none}
+    #dashboardSection .modal-lite .content{background:#fff;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);
+      padding:16px;min-width:320px;max-width:92vw;max-height:92vh;overflow-y:auto;position:relative}
+    #dashboardSection .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;position:sticky;top:0;background:#fff;
+      margin:-16px -16px 12px -16px;padding:12px 16px;border-bottom:1px solid #eee;border-top-left-radius:12px;border-top-right-radius:12px}
+    #dashboardSection .title-wrap{display:flex;flex-direction:column;gap:2px;min-width:0;max-width:calc(100% - 48px)}
+    #dashboardSection .title-line.store{font-weight:700;font-size:16px;color:#2b3a67;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #dashboardSection .title-line.sub{font-size:13px;color:#667085;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #dashboardSection .close-btn{width:36px;height:36px;border:none;border-radius:10px;background:#f2f4f7;color:#333;font-size:20px;line-height:1;cursor:pointer;flex:0 0 auto}
+    #dashboardSection .close-btn:hover{background:#e5e7eb}
+    #dashboardSection .form-row{margin-top:10px}
+    #dashboardSection .form-row label{display:block;font-size:12px;color:#555;margin-bottom:4px}
+    #dashboardSection .form-row input,#dashboardSection .form-row textarea{width:100%;padding:10px;border:1px solid #d0d5dd;border-radius:10px;background:#fafafa}
+    #dashboardSection .form-row input:focus,#dashboardSection .form-row textarea:focus{outline:none;border-color:#2b3a67;background:#fff}
+    #dashboardSection .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;position:sticky;bottom:0;background:#fff;padding-top:8px}
+    #dashboardSection .btn-lite{padding:10px 14px;border:none;border-radius:10px;cursor:pointer}
+    #dashboardSection .btn-lite.cancel{background:#f2f4f7}
+    #dashboardSection .btn-lite.save{background:#2b3a67;color:#fff}
+    #dashboardSection .hint{font-size:11px;color:#667085;margin-top:6px}
+    @media (max-width:767.98px){
+      #dashboardSection .db-container{padding:12px}
+      #dashboardSection .kpi-card{padding:14px;min-height:104px}
+      #dashboardSection .edit-btn{top:6px;right:6px}
+      #dashboardSection .mini-score{top:6px;right:40px}
+      #dashboardSection .target-badge{right:6px;bottom:6px;font-size:10px}
+      #dashboardSection .modal-lite .content{width:100vw;height:100dvh;max-width:none;border-radius:0;padding:16px}
+      #dashboardSection .modal-head{margin:-16px -16px 12px -16px;padding:12px 16px;border-radius:0}
     }
   </style>
 </head>
@@ -62,26 +166,17 @@
         aria-controls="offcanvasNavbar" aria-label="メニュー">
         <span class="navbar-toggler-icon"></span>
       </button>
-      <div class="offcanvas offcanvas-start w-50" tabindex="-1" id="offcanvasNavbar"
-        aria-labelledby="offcanvasNavbarLabel">
+      <div class="offcanvas offcanvas-start w-50" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
         <div class="offcanvas-header">
           <h5 class="offcanvas-title" id="offcanvasNavbarLabel">店舗管理ツール</h5>
           <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
         </div>
         <div class="offcanvas-body">
           <ul class="navbar-nav flex-column">
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showDiagnosticSection(); closeOffcanvas();">店舗診断表</button>
-            </li>
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showTaskSection(); closeOffcanvas();">タスク一覧</button>
-            </li>
-            <li class="nav-item">
-              <button class="btn btn-link nav-link" onclick="showSettingsSection(); closeOffcanvas();">設定</button>
-            </li>
-            <li class="nav-item">
-              <a class="btn btn-link nav-link" href="dashboard.html">ダッシュボード</a>
-            </li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showDiagnosticSection(); closeOffcanvas();">店舗診断表</button></li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showTaskSection(); closeOffcanvas();">タスク一覧</button></li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showSettingsSection(); closeOffcanvas();">設定</button></li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showDashboardSection(); closeOffcanvas();">ダッシュボード</button></li>
           </ul>
         </div>
       </div>
@@ -90,14 +185,14 @@
 
   <div class="container-fluid">
     <div class="row">
-      <!-- デスクトップ用：サイドバー -->
+      <!-- デスクトップ：サイドバー -->
       <nav class="col-md-2 d-none d-md-block bg-light sidebar">
         <div class="position-sticky pt-3">
           <ul class="nav flex-column">
             <li class="nav-item"><button class="btn btn-link nav-link" onclick="showDiagnosticSection()">店舗診断表</button></li>
             <li class="nav-item"><button class="btn btn-link nav-link" onclick="showTaskSection()">タスク一覧</button></li>
             <li class="nav-item"><button class="btn btn-link nav-link" onclick="showSettingsSection()">設定</button></li>
-            <li class="nav-item"><a class="btn btn-link nav-link" href="dashboard.html">ダッシュボード</a></li>
+            <li class="nav-item"><button class="btn btn-link nav-link" onclick="showDashboardSection()">ダッシュボード</button></li>
           </ul>
         </div>
       </nav>
@@ -135,9 +230,7 @@
               <div class="row g-2 align-items-end">
                 <div class="col-12 col-md-auto">
                   <label for="taskAddStoreSelect" class="form-label">店舗名</label>
-                  <select id="taskAddStoreSelect" class="form-select">
-                    <option value="">店舗を選択</option>
-                  </select>
+                  <select id="taskAddStoreSelect" class="form-select"><option value="">店舗を選択</option></select>
                 </div>
                 <div class="col-12 col-md-auto">
                   <label for="taskAddItemInput" class="form-label">項目</label>
@@ -220,8 +313,139 @@
               <h2 class="h5 mb-3">CSVアップロード</h2>
               <p>下記エリアにCSVファイルをドラッグ＆ドロップしてください。</p>
               <div id="csvDropArea" class="border border-primary rounded p-5 text-center"
-                ondragenter="handleDragEnter(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
+                   ondragenter="handleDragEnter(event)" ondragover="handleDragOver(event)" ondrop="handleDrop(event)">
                 ここにCSVファイルをドロップ
+              </div>
+            </div>
+          </section>
+
+          <!-- ダッシュボード（統合版） -->
+          <section id="dashboardSection" style="display:none;">
+            <h1 class="mb-3">ダッシュボード</h1>
+            <div class="db-container">
+              <!-- 上段：ヘッダー + KPI -->
+              <div class="top-section">
+                <div class="header-card">
+                  <div class="header-controls">
+                    <div>
+                      <label for="store-select">店舗（KPI）：</label>
+                      <select id="store-select"></select>
+                    </div>
+                    <div>
+                      <label for="target-date">日付：</label>
+                      <input type="month" id="target-date" value="">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="kpi-card" id="kpi-sales">
+                  <h3>売上</h3>
+                  <div class="value">-- 円</div>
+                  <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+                </div>
+                <div class="kpi-card" id="kpi-unitprice">
+                  <h3>単価</h3>
+                  <div class="value">-- 円</div>
+                  <div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div>
+                </div>
+              </div>
+
+              <!-- 2段目 -->
+              <div class="kpi-row row-2">
+                <div class="kpi-card" id="kpi-labour-sales"><h3>人時売上高</h3><div class="value">-- 円</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-F"><h3>F</h3><div class="value">--%</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-D"><h3>D</h3><div class="value">--%</div><div class="trend down"><span class="icon">▼</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-labour-cost"><h3>人件費</h3><div class="value">--%</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-inspection-sheet"><h3>臨店シート</h3><div class="value">--</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+              </div>
+
+              <!-- 3段目 -->
+              <div class="kpi-row row-3">
+                <div class="kpi-card" id="kpi-mtg-rate"><h3>店舗MTG参加率</h3><div class="value">--%</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-cs-score"><h3>CSアンケート</h3><div class="value">-- 点</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-interview-progress"><h3>面談進捗</h3><div class="value">--%</div><div class="trend down"><span class="icon">▼</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-referral-hires"><h3>PAリファラル採用</h3><div class="value">-- 名</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+                <div class="kpi-card" id="kpi-score"><h3>点数（総合）</h3><div class="value">-- / 110点</div><div class="trend up"><span class="icon">▲</span><span class="percent">--%</span></div></div>
+              </div>
+
+              <!-- ランキング -->
+              <div class="panel" id="score-ranking">
+                <h4>6店舗 点数ランキング（当月 / 110点満点）</h4>
+                <div class="rank-wrap">
+                  <table class="rank" id="score-ranking-table">
+                    <thead><tr><th>#</th><th>店舗名</th><th>点数</th></tr></thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- グラフツールバー -->
+              <div class="chart-toolbar">
+                <div class="group">
+                  <label for="chart-store-select">店舗（グラフ）：</label>
+                  <select id="chart-store-select"></select>
+                </div>
+                <div class="group">
+                  <label for="fiscal-year">期：</label>
+                  <select id="fiscal-year"></select>
+                </div>
+                <div class="group">
+                  <label style="display:flex;gap:6px;align-items:center;">
+                    <input type="checkbox" id="toggle-yoy" checked> 昨対比(%) 表示
+                  </label>
+                </div>
+              </div>
+
+              <!-- グラフ -->
+              <div class="chart-section">
+                <div class="chart-card"><canvas id="salesChart"></canvas></div>
+                <div class="chart-card"><canvas id="unitPriceChart"></canvas></div>
+                <div class="chart-card"><canvas id="labourSalesChart"></canvas></div>
+              </div>
+
+              <!-- 数値編集モーダル（2行タイトル） -->
+              <div id="edit-modal" class="modal-lite" hidden>
+                <div class="content">
+                  <div class="modal-head">
+                    <div class="title-wrap">
+                      <div class="title-line store" id="edit-title-store"></div>
+                      <div class="title-line sub" id="edit-title-sub"></div>
+                    </div>
+                    <button class="close-btn" id="edit-close" aria-label="閉じる">×</button>
+                  </div>
+                  <input id="edit-store" type="hidden"><input id="edit-month" type="hidden"><input id="edit-item" type="hidden">
+                  <div class="form-row"><label>目標数値</label><input id="edit-target" type="number" step="any" placeholder="例）100000"></div>
+                  <div class="form-row"><label>実績</label><input id="edit-actual" type="number" step="any" placeholder="例）95000"></div>
+                  <div class="hint">空欄保存＝未入力として扱います。</div>
+                  <div class="actions">
+                    <button class="btn-lite cancel" id="btn-cancel">キャンセル</button>
+                    <button class="btn-lite save" id="btn-save">保存</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 仮説・ネクスト＆タスク送信モーダル（2行タイトル） -->
+              <div id="detail-modal" class="modal-lite" hidden>
+                <div class="content">
+                  <div class="modal-head">
+                    <div class="title-wrap">
+                      <div class="title-line store" id="detail-title-store"></div>
+                      <div class="title-line sub" id="detail-title-sub"></div>
+                    </div>
+                    <button class="close-btn" id="detail-close" aria-label="閉じる">×</button>
+                  </div>
+                  <input type="hidden" id="detail-id"><input type="hidden" id="detail-store">
+                  <input type="hidden" id="detail-month"><input type="hidden" id="detail-item">
+                  <div class="form-row"><label>仮説</label><textarea id="detail-hypo" rows="3" placeholder="仮説を入力"></textarea></div>
+                  <div class="form-row"><label>ネクストアクション</label><textarea id="detail-next" rows="3" placeholder="次にやることを入力"></textarea></div>
+                  <div class="actions"><button class="btn-lite save" id="btn-detail-save">仮説・ネクストを保存</button></div>
+                  <hr style="margin:12px 0;">
+                  <input type="hidden" id="task-item">
+                  <div class="form-row"><label>タスク</label><input id="task-detail" type="text" placeholder="例：棚割り見直し"></div>
+                  <div class="form-row"><label>期限</label><input id="task-due" type="date"></div>
+                  <div class="form-row"><label>責任者</label><input id="task-owner" type="text" placeholder="例：佐藤"></div>
+                  <div class="actions"><button class="btn-lite save" id="btn-detail-send">タスク送信</button></div>
+                </div>
               </div>
             </div>
           </section>
@@ -231,60 +455,45 @@
     </div>
   </div>
 
-  <!-- モーダル -->
+  <!-- 既存の診断表モーダル（Bootstrap） -->
   <div class="modal fade" id="diagnosticModal" tabindex="-1" aria-labelledby="diagnosticModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="diagnosticModalLabel">店舗診断表 詳細</h5>
-          <button type="button" class="btn btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
-        </div>
-        <div class="modal-body">
-          <input type="hidden" id="modalDiagnosticId">
-          <div class="mb-3">
-            <label for="modalHypothesisInput" class="form-label fw-bold">仮説:</label>
-            <textarea id="modalHypothesisInput" class="form-control" rows="3" placeholder="仮説を入力または確認"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="modalNextActionInput" class="form-label fw-bold">ネクストアクション:</label>
-            <textarea id="modalNextActionInput" class="form-control" rows="3" placeholder="次のアクションを入力または確認"></textarea>
-          </div>
-          <div class="d-grid">
-            <button type="button" class="btn btn-primary mb-3" onclick="updateDiagnostic()">仮説・ネクストアクションを更新</button>
-          </div>
-          <hr />
-          <h5 class="mb-3">タスク送信</h5>
-          <div class="mb-2">
-            <label for="modalTaskItem" class="form-label">項目</label>
-            <select id="modalTaskItem" class="form-select">
-              <option value="">項目を選択</option>
-              <option value="売上">売上</option><option value="単価">単価</option>
-              <option value="人時売上高">人時売上高</option><option value="F">F</option>
-              <option value="D">D</option><option value="人件費">人件費</option>
-              <option value="臨店シート">臨店シート</option><option value="CS調査">CS調査</option>
-              <option value="面談進捗">面談進捗</option><option value="ESアンケート">ESアンケート</option>
-              <option value="PAリファラル採用">PAリファラル採用</option>
-            </select>
-          </div>
-          <div class="mb-2">
-            <label for="modalTaskDetail" class="form-label">タスク</label>
-            <input id="modalTaskDetail" class="form-control" placeholder="例：棚割り見直し">
-          </div>
-          <div class="mb-2">
-            <label for="modalTaskDue" class="form-label">期限</label>
-            <input type="date" id="modalTaskDue" class="form-control">
-          </div>
-          <div class="mb-3">
-            <label for="modalTaskOwner" class="form-label">責任者</label>
-            <input id="modalTaskOwner" class="form-control" placeholder="例：黒木">
-          </div>
-          <div class="d-grid">
-            <button type="button" class="btn btn-success" onclick="addTaskFromModal()">タスク送信</button>
-          </div>
-        </div>
-        <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button></div>
+    <div class="modal-dialog"><div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="diagnosticModalLabel">店舗診断表 詳細</h5>
+        <button type="button" class="btn btn-close" data-bs-dismiss="modal" aria-label="閉じる"></button>
       </div>
-    </div>
+      <div class="modal-body">
+        <input type="hidden" id="modalDiagnosticId">
+        <div class="mb-3">
+          <label for="modalHypothesisInput" class="form-label fw-bold">仮説:</label>
+          <textarea id="modalHypothesisInput" class="form-control" rows="3" placeholder="仮説を入力または確認"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="modalNextActionInput" class="form-label fw-bold">ネクストアクション:</label>
+          <textarea id="modalNextActionInput" class="form-control" rows="3" placeholder="次のアクションを入力または確認"></textarea>
+        </div>
+        <div class="d-grid"><button type="button" class="btn btn-primary mb-3" onclick="updateDiagnostic()">仮説・ネクストアクションを更新</button></div>
+        <hr />
+        <h5 class="mb-3">タスク送信</h5>
+        <div class="mb-2">
+          <label for="modalTaskItem" class="form-label">項目</label>
+          <select id="modalTaskItem" class="form-select">
+            <option value="">項目を選択</option>
+            <option value="売上">売上</option><option value="単価">単価</option>
+            <option value="人時売上高">人時売上高</option><option value="F">F</option>
+            <option value="D">D</option><option value="人件費">人件費</option>
+            <option value="臨店シート">臨店シート</option><option value="CS調査">CS調査</option>
+            <option value="面談進捗">面談進捗</option><option value="ESアンケート">ESアンケート</option>
+            <option value="PAリファラル採用">PAリファラル採用</option>
+          </select>
+        </div>
+        <div class="mb-2"><label for="modalTaskDetail" class="form-label">タスク</label><input id="modalTaskDetail" class="form-control" placeholder="例：棚割り見直し"></div>
+        <div class="mb-2"><label for="modalTaskDue" class="form-label">期限</label><input type="date" id="modalTaskDue" class="form-control"></div>
+        <div class="mb-3"><label for="modalTaskOwner" class="form-label">責任者</label><input id="modalTaskOwner" class="form-control" placeholder="例：黒木"></div>
+        <div class="d-grid"><button type="button" class="btn btn-success" onclick="addTaskFromModal()">タスク送信</button></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button></div>
+    </div></div>
   </div>
 
   <!-- スクリプト -->

@@ -11,6 +11,8 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 /* ===== DOM ===== */
 const diagnosticSection = document.getElementById("diagnosticSection");
 const taskSection = document.getElementById("taskSection");
+const settingsSection = document.getElementById("settingsSection");
+const dashboardSection = document.getElementById("dashboardSection"); // ← SPA用ダッシュボード
 
 const storeSelect = document.getElementById("storeSelect");
 const monthSelect = document.getElementById("monthSelect");
@@ -40,6 +42,10 @@ let currentSortColumn = null;
 let currentSortDir = "asc";
 let bootstrapModal = null;
 
+/* ===== ダッシュボード状態 ===== */
+let dashboardInitialized = false;
+let salesChart = null, unitChart = null, labourChart = null;
+
 /* ===== 初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initStoreDropdowns();
@@ -47,23 +53,44 @@ window.addEventListener("DOMContentLoaded", async () => {
   await fetchAndDisplayDiagnostics();
   await fetchAndDisplayTasks();
   subscribeTasksRealtime();
+
+  // ハッシュルーティング（任意）
+  if (location.hash === "#dashboard") {
+    showDashboardSection();
+  }
 });
 
 /* ===== 画面切替 ===== */
+function hideAllSections() {
+  diagnosticSection && (diagnosticSection.style.display = 'none');
+  taskSection && (taskSection.style.display = 'none');
+  settingsSection && (settingsSection.style.display = 'none');
+  dashboardSection && (dashboardSection.style.display = 'none');
+}
 window.showDiagnosticSection = function () {
+  hideAllSections();
   diagnosticSection.style.display = 'block';
-  taskSection.style.display = 'none';
-  document.getElementById('settingsSection').style.display = 'none';
+  history.replaceState(null, "", "#diagnostic");
 };
 window.showTaskSection = function () {
-  diagnosticSection.style.display = 'none';
+  hideAllSections();
   taskSection.style.display = 'block';
-  document.getElementById('settingsSection').style.display = 'none';
+  history.replaceState(null, "", "#tasks");
 };
 window.showSettingsSection = function () {
-  diagnosticSection.style.display = 'none';
-  taskSection.style.display = 'none';
-  document.getElementById('settingsSection').style.display = 'block';
+  hideAllSections();
+  settingsSection.style.display = 'block';
+  history.replaceState(null, "", "#settings");
+};
+window.showDashboardSection = async function () {
+  hideAllSections();
+  if (!dashboardSection) { alert("dashboardSection が見つかりません。index.html にセクションを追加してください。"); return; }
+  dashboardSection.style.display = 'block';
+  history.replaceState(null, "", "#dashboard");
+  if (!dashboardInitialized) {
+    await initDashboard(); // 初回だけ初期化
+    dashboardInitialized = true;
+  }
 };
 window.closeOffcanvas = function () {
   const el = document.getElementById('offcanvasNavbar');
@@ -121,7 +148,7 @@ window.handleDrop = handleDrop;
 async function initStoreDropdowns() {
   const { data, error } = await supabase.from("店舗診断表").select("店舗名");
   if (error) { console.error("店舗一覧取得エラー:", error); return; }
-  const storeNames = [...new Set(data.map((item) => item.店舗名))];
+  const storeNames = [...new Set((data || []).map((item) => item.店舗名))];
 
   storeNames.forEach((name) => {
     const opt = document.createElement("option");
@@ -150,7 +177,7 @@ async function initStoreDropdowns() {
 async function initMonthDropdown() {
   const { data, error } = await supabase.from("店舗診断表").select("月");
   if (error) { console.error("月一覧取得エラー:", error); return; }
-  const distinctMonths = [...new Set(data.map((item) => item.月))];
+  const distinctMonths = [...new Set((data || []).map((item) => item.月))];
   distinctMonths.forEach((m) => {
     const opt = document.createElement("option");
     opt.value = m; opt.textContent = m;
@@ -171,7 +198,7 @@ window.fetchAndDisplayDiagnostics = async function () {
   if (error) { console.error("店舗診断表取得エラー:", error); return; }
 
   diagnosticsCardContainer.innerHTML = "";
-  data.forEach((row) => {
+  (data || []).forEach((row) => {
     const colDiv = document.createElement("div");
     colDiv.className = "col";
 
@@ -319,7 +346,7 @@ window.fetchAndDisplayTasks = async function () {
     const { data: diagData, error: diagError } = await supabase
       .from("店舗診断表").select("id, 店舗名");
     if (diagError) { console.error("店舗診断表取得エラー:", diagError); return; }
-    const matchedIds = diagData.filter(d => d.店舗名 === selectedStore).map(d => d.id);
+    const matchedIds = (diagData || []).filter(d => d.店舗名 === selectedStore).map(d => d.id);
     if (!matchedIds.length) { tasksDataGlobal = []; renderTasks(); return; }
     query = query.in("店舗診断表_id", matchedIds);
   }
@@ -327,14 +354,14 @@ window.fetchAndDisplayTasks = async function () {
   const { data: result, error } = await query;
   if (error) { console.error("タスク一覧取得エラー:", error); return; }
 
-  const diagIds = result.map(r => r.店舗診断表_id);
+  const diagIds = (result || []).map(r => r.店舗診断表_id);
   let storeMap = {};
   if (diagIds.length) {
     const { data: diag, error: dErr } = await supabase
       .from("店舗診断表").select("id, 店舗名").in("id", diagIds);
-    if (!dErr) diag.forEach(d => { storeMap[d.id] = d.店舗名; });
+    if (!dErr && diag) diag.forEach(d => { storeMap[d.id] = d.店舗名; });
   }
-  tasksDataGlobal = result.map(r => ({ ...r, 店舗名: storeMap[r.店舗診断表_id] || "" }));
+  tasksDataGlobal = (result || []).map(r => ({ ...r, 店舗名: storeMap[r.店舗診断表_id] || "" }));
 
   renderTasks();
   updateSortIndicators(null, null);
@@ -444,7 +471,7 @@ function addMobileSwipe(container, foreEl, onConfirmDelete) {
   document.addEventListener('mouseup',   onEnd);
 }
 
-/* ===== トースト：削除 or 取り消し（LINE風・さらに狭幅／超薄背景／横並びボタン） ===== */
+/* ===== トースト：削除 or 取り消し（LINE風・狭幅オーバーレイ） ===== */
 function showDeleteToast() {
   return new Promise((resolve) => {
     document.getElementById('__confirmOverlay')?.remove();
@@ -463,19 +490,19 @@ function showDeleteToast() {
     body.style.width = '100%';
     body.style.overflow = 'hidden';
 
-    // より薄いオーバーレイ（背景が見やすい）
+    // 薄いオーバーレイ
     const overlay = document.createElement('div');
     overlay.id = '__confirmOverlay';
     overlay.style.position = 'fixed';
     overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.12)'; // ← かなり薄め
+    overlay.style.background = 'rgba(0,0,0,0.12)';
     overlay.style.zIndex = '1050';
     overlay.style.display = 'flex';
     overlay.style.alignItems = 'center';
     overlay.style.justifyContent = 'center';
     overlay.style.padding = '16px';
 
-    // ダイアログ（さらに狭く：最大320px）
+    // ダイアログ
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
@@ -485,7 +512,7 @@ function showDeleteToast() {
     dialog.style.background = '#212529';
     dialog.style.color = '#fff';
     dialog.style.borderRadius = '14px';
-    dialog.style.width = 'min(320px, 86vw)'; // ← さらに狭幅
+    dialog.style.width = 'min(320px, 86vw)';
     dialog.style.padding = '16px';
     dialog.style.boxShadow = '0 12px 28px rgba(0,0,0,.22)';
     dialog.style.zIndex = '1060';
@@ -502,7 +529,7 @@ function showDeleteToast() {
     title.style.marginBottom = '12px';
     title.textContent = 'このタスクを削除しますか？';
 
-    // ボタン行（横並び・等幅）
+    // ボタン行
     const btnRow = document.createElement('div');
     btnRow.style.display = 'flex';
     btnRow.style.gap = '8px';
@@ -513,8 +540,8 @@ function showDeleteToast() {
       btn.style.borderRadius = '10px';
       btn.style.padding = '10px';
       btn.style.fontSize = '0.98rem';
-      btn.style.flex = '1 1 0';   // 等幅
-      btn.style.minWidth = '0';   // 折返し対策
+      btn.style.flex = '1 1 0';
+      btn.style.minWidth = '0';
     };
 
     const btnDelete = document.createElement('button');
@@ -529,12 +556,12 @@ function showDeleteToast() {
     btnCancel.textContent = '取消';
     commonBtnStyle(btnCancel);
 
-    btnRow.append(btnCancel, btnDelete); // 左=取消 / 右=削除（LINEに近い並び）
+    btnRow.append(btnCancel, btnDelete); // 左=取消 / 右=削除
     dialog.append(title, btnRow);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    // 軽いフェードイン
+    // フェードイン
     requestAnimationFrame(() => {
       dialog.style.opacity = '1';
       dialog.style.transform = 'translateY(0)';
@@ -556,12 +583,12 @@ function showDeleteToast() {
     };
     dialog.addEventListener('keydown', onKeydown);
 
-    // 背景スクロール抑止
+    // 背景のスクロール抑止
     const stopScroll = (e) => e.preventDefault();
     overlay.addEventListener('wheel', stopScroll, { passive: false });
     overlay.addEventListener('touchmove', stopScroll, { passive: false });
 
-    // オーバーレイ外クリックで取消（不要なら削除可）
+    // 外側クリックで取消
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) cleanup('cancel');
     });
@@ -575,7 +602,7 @@ function showDeleteToast() {
       overlay.removeEventListener('touchmove', stopScroll);
       overlay.remove();
 
-      // 背景固定解除＆元の位置へ
+      // 背景固定解除＆元位置
       body.style.position = prevBodyStyle.position;
       body.style.top = prevBodyStyle.top;
       body.style.width = prevBodyStyle.width;
@@ -723,3 +750,368 @@ function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;
 
 /* 期限超過バッジ（必要ならここで表示先へ反映） */
 function updateOverdueBadge(/*count*/) {}
+
+/* ======================================================================
+   ==================  ダッシュボード（SPA統合）  =======================
+   ====================================================================== */
+
+async function ensureChartJs() {
+  if (window.Chart) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = "https://cdn.jsdelivr.net/npm/chart.js";
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
+}
+
+async function initDashboard() {
+  await ensureChartJs();
+
+  // ダッシュボード内のDOMを取得（dashboardSection 配下）
+  const $ = (id) => dashboardSection.querySelector(id);
+
+  const storeSelectDash = $("#store-select");
+  const chartStoreSelect = $("#chart-store-select");
+  const targetDateInput = $("#target-date");
+  const fiscalYearSelect = $("#fiscal-year");
+  const toggleYoy = $("#toggle-yoy");
+  const rankTableBody = $("#score-ranking-table tbody");
+
+  // KPIカードIDと項目対応
+  const kpiList = [
+    { id: 'kpi-sales', item: '売上' },
+    { id: 'kpi-unitprice', item: '単価' },
+    { id: 'kpi-labour-sales', item: '人時売上高' },
+    { id: 'kpi-F', item: 'F' },
+    { id: 'kpi-D', item: 'D' },
+    { id: 'kpi-labour-cost', item: '人件費' },
+    { id: 'kpi-inspection-sheet', item: '臨店シート' },
+    { id: 'kpi-mtg-rate', item: '店舗MTG参加率' },
+    { id: 'kpi-cs-score', item: 'CSアンケート' },
+    { id: 'kpi-interview-progress', item: '面談進捗' },
+    { id: 'kpi-referral-hires', item: 'PAリファラル採用' },
+    { id: 'kpi-score', item: '点数' },
+  ];
+
+  const percentItems = new Set(['F', 'D', '人件費', '店舗MTG参加率', '面談進捗']);
+  const yenItems = new Set(['売上', '単価', '人時売上高']);
+  const unitMap = {
+    '売上': '円', '単価': '円', '人時売上高': '円',
+    'F': '%', 'D': '%', '人件費': '%', '店舗MTG参加率': '%', '面談進捗': '%',
+    '臨店シート': '', 'CSアンケート': '点', 'PAリファラル採用': '名', '点数': '点'
+  };
+
+  // チャートコンテキスト
+  const ctxSales = $("#salesChart")?.getContext("2d");
+  const ctxUnit = $("#unitPriceChart")?.getContext("2d");
+  const ctxLabour = $("#labourSalesChart")?.getContext("2d");
+
+  // Utils（ダッシュボード用）
+  const toYYYYMM = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const labelYYYYMM = (yyyymm) => `${yyyymm.slice(0, 4)}/${yyyymm.slice(4, 6)}`;
+  const formatYen = (v) => '¥ ' + Number(v ?? 0).toLocaleString();
+  const currentFYStartYear = (() => { const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1; return (m >= 4) ? y : (y - 1); })();
+
+  function getFiscalMonths(fyStartYear) {
+    const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr;
+  }
+
+  // 店舗一覧
+  async function getUniqueStores() {
+    const { data, error } = await supabase.from("店舗診断表").select("店舗名").order("店舗名", { ascending: true });
+    if (error) { console.error("店舗名取得エラー:", error); return []; }
+    return Array.from(new Set((data || []).map(r => r.店舗名)));
+  }
+  async function populateStoreSelects() {
+    const stores = await getUniqueStores();
+    storeSelectDash.innerHTML = ""; chartStoreSelect.innerHTML = "";
+    stores.forEach(name => {
+      const o1 = document.createElement("option"); o1.value = o1.textContent = name; storeSelectDash.appendChild(o1);
+      const o2 = document.createElement("option"); o2.value = o2.textContent = name; chartStoreSelect.appendChild(o2);
+    });
+  }
+  async function populateFiscalYears(store) {
+    const { data, error } = await supabase.from("店舗診断表").select("月").eq("店舗名", store).eq("項目", "売上").order("月", { ascending: true });
+    if (error) { console.error("期抽出エラー:", error); return; }
+    const months = (data || []).map(r => String(r.月));
+    const fySet = new Set(); months.forEach(m => { const y = +m.slice(0, 4), mm = +m.slice(4, 6); fySet.add((mm >= 4) ? y : (y - 1)); });
+    const fyList = Array.from(fySet).sort((a, b) => b - a);
+    fiscalYearSelect.innerHTML = "";
+    fyList.forEach(y => { const opt = document.createElement("option"); opt.value = y; opt.textContent = `${y}期（${y}/04〜${y + 1}/03）`; fiscalYearSelect.appendChild(opt); });
+    const def = fyList.includes(currentFYStartYear) ? currentFYStartYear : fyList[0]; if (def) fiscalYearSelect.value = def;
+  }
+
+  async function fetchMetric(store, item, months) {
+    const { data, error } = await supabase
+      .from("店舗診断表").select("月, 目標数値, 実績")
+      .eq("店舗名", store).eq("項目", item).in("月", months);
+    if (error) { console.error("fetchMetric error:", error); return {}; }
+    const map = {}; (data || []).forEach(r => { map[String(r.月)] = { target: r.目標数値 != null ? Number(r.目標数値) : null, actual: r.実績 != null ? Number(r.実績) : null }; });
+    return map;
+  }
+
+  function calcYoYPercent(currActualArr, prevActualArr) {
+    return currActualArr.map((v, i) => {
+      const p = prevActualArr[i];
+      if (p == null || p === 0 || v == null) return null;
+      return (v / p - 1) * 100;
+    });
+  }
+
+  function renderChart(ctx, labels, targetArr, actualArr, yoyPercentArr, title, unit, showYoY, existingChartRef) {
+    if (!ctx) return null;
+    if (existingChartRef) existingChartRef.destroy();
+    const datasets = [
+      { label: '目標', data: targetArr, tension: 0.1, fill: false },
+      { label: '実績', data: actualArr, tension: 0.1, fill: false }
+    ];
+    if (showYoY) {
+      datasets.push({ label: '昨対比(%)', data: yoyPercentArr, yAxisID: 'y2', tension: 0.1, borderDash: [5, 5], spanGaps: true });
+    }
+    return new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, spanGaps: true,
+        plugins: {
+          title: { display: true, text: title },
+          legend: { display: true },
+          tooltip: {
+            callbacks: {
+              label: (c) => {
+                const name = c.dataset.label || '', val = c.raw;
+                if (name.includes('昨対比')) return `${name}: ${val == null ? '-' : val.toFixed(1)}%`;
+                if (unit === 'yen') return `${name}: ${val == null ? '-' : formatYen(val)}`;
+                return `${name}: ${val == null ? '-' : Number(val).toLocaleString()}`
+              }
+            }
+          }
+        },
+        scales: {
+          x: { type: 'category', ticks: { autoSkip: false, maxRotation: 45, minRotation: 0 }, title: { display: true, text: '月' } },
+          y: { beginAtZero: true, title: { display: true, text: unit === 'yen' ? '金額' : '値' }, ticks: { callback: (v) => unit === 'yen' ? (v === 0 ? '0' : v.toLocaleString()) : v } },
+          y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: (v) => `${v}%` }, title: { display: showYoY, text: showYoY ? '昨対比(%)' : '' }, suggestedMin: -50, suggestedMax: 50 }
+        }
+      }
+    });
+  }
+
+  async function renderAllCharts() {
+    const store = chartStoreSelect.value || storeSelectDash.value;
+    const fy = Number(fiscalYearSelect.value); if (!store || !fy) return;
+    const months = getFiscalMonths(fy), prevMonths = getFiscalMonths(fy - 1), labels = months.map(labelYYYYMM), showYoY = toggleYoy.checked;
+
+    const salesCurr = await fetchMetric(store, '売上', months), salesPrev = await fetchMetric(store, '売上', prevMonths);
+    const salesTarget = months.map(m => salesCurr[m]?.target ?? null), salesActual = months.map(m => salesCurr[m]?.actual ?? null);
+    const salesPrevActual = prevMonths.map(m => salesPrev[m]?.actual ?? null), salesYoY = calcYoYPercent(salesActual, salesPrevActual);
+    salesChart = renderChart(ctxSales, labels, salesTarget, salesActual, salesYoY, `${store}：売上 目標／実績（${fy}/04〜${fy + 1}/03）`, 'yen', showYoY, salesChart);
+
+    const unitCurr = await fetchMetric(store, '単価', months), unitPrev = await fetchMetric(store, '単価', prevMonths);
+    const unitTarget = months.map(m => unitCurr[m]?.target ?? null), unitActual = months.map(m => unitCurr[m]?.actual ?? null);
+    const unitPrevActual = prevMonths.map(m => unitPrev[m]?.actual ?? null), unitYoY = calcYoYPercent(unitActual, unitPrevActual);
+    unitChart = renderChart(ctxUnit, labels, unitTarget, unitActual, unitYoY, `${store}：客単価 目標／実績（${fy}/04〜${fy + 1}/03）`, 'yen', showYoY, unitChart);
+
+    const labourCurr = await fetchMetric(store, '人時売上高', months), labourPrev = await fetchMetric(store, '人時売上高', prevMonths);
+    const labourTarget = months.map(m => labourCurr[m]?.target ?? null), labourActual = months.map(m => labourCurr[m]?.actual ?? null);
+    const labourPrevActual = prevMonths.map(m => labourPrev[m]?.actual ?? null), labourYoY = calcYoYPercent(labourActual, labourPrevActual);
+    labourChart = renderChart(ctxLabour, labels, labourTarget, labourActual, labourYoY, `${store}：人時売上高 目標／実績（${fy}/04〜${fy + 1}/03）`, 'number', showYoY, labourChart);
+  }
+
+  // 採点（10/0点）
+  const LOWER_IS_BETTER = new Set(['F', 'D', '人件費']);
+  function binaryScore(item, t, a) {
+    if (a == null) return 10;
+    if (Number(a) === 0) return 0;
+    if (t == null) return 10;
+    if (LOWER_IS_BETTER.has(item)) return Number(a) <= Number(t) ? 10 : 0;
+    return Number(a) >= Number(t) ? 10 : 0;
+  }
+  const SCORE_ITEMS = ['売上', '単価', '人時売上高', 'F', 'D', '人件費', '臨店シート', '店舗MTG参加率', 'CSアンケート', '面談進捗', 'PAリファラル採用'];
+
+  async function computeScoreByItems(store, month) {
+    const { data, error } = await supabase
+      .from("店舗診断表")
+      .select("項目,目標数値,実績")
+      .eq("店舗名", store)
+      .eq("月", month)
+      .in("項目", SCORE_ITEMS);
+    if (error) { console.error('computeScore error', error); return null; }
+    const map = {}; (data || []).forEach(r => map[r.項目] = { t: r.目標数値, a: r.実績 });
+    let total = 0;
+    SCORE_ITEMS.forEach(it => {
+      const pair = map[it] || {};
+      total += binaryScore(it,
+        pair.t != null ? Number(pair.t) : null,
+        pair.a != null ? Number(pair.a) : null
+      );
+    });
+    return total;
+  }
+
+  async function renderScoreRanking(month) {
+    // 直近6店舗でランキング（必要なら店舗選択UIに合わせて変更）
+    const stores = await getUniqueStores();
+    const targetStores = stores.slice(0, 6);
+    if (targetStores.length === 0) return;
+
+    const { data: scoreRows, error } = await supabase
+      .from("店舗診断表")
+      .select("店舗名,実績")
+      .eq("項目", "点数")
+      .eq("月", month)
+      .in("店舗名", targetStores);
+    const directMap = {}; if (!error && scoreRows) { scoreRows.forEach(r => directMap[r.店舗名] = Math.round(Number(r.実績 || 0))); }
+
+    const rows = [];
+    for (const st of targetStores) {
+      let score = directMap[st];
+      if (score == null) {
+        const calc = await computeScoreByItems(st, month);
+        score = calc != null ? Math.round(calc) : 0;
+      }
+      rows.push({ store: st, score });
+    }
+    rows.sort((a, b) => b.score - a.score);
+    rankTableBody.innerHTML = "";
+    rows.forEach((r, idx) => {
+      const badgeClass = idx === 0 ? 'gold' : (idx === 1 ? 'silver' : (idx === 2 ? 'bronze' : ''));
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="rank-badge ${badgeClass}">${idx + 1}</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
+      rankTableBody.appendChild(tr);
+    });
+  }
+
+  // KPI更新
+  async function updateAllKPIs(store, dateStr) {
+    if (!store || !dateStr) return;
+    const month = dateStr.slice(0, 7).replace("-", "");
+
+    const { data, error } = await supabase
+      .from("店舗診断表")
+      .select("項目,目標数値,実績")
+      .eq("店舗名", store)
+      .eq("月", month);
+    if (error) { console.error("KPI取得エラー:", error); return; }
+
+    function asPercentInt(v) {
+      if (v == null) return null;
+      const n = Number(v);
+      const pct = Math.abs(n) <= 1 ? n * 100 : n;
+      return Math.round(pct);
+    }
+    function roundIfNeeded(item, n) {
+      return (item === '単価' || item === '人時売上高') ? Math.round(Number(n)) : Number(n);
+    }
+
+    for (const { id, item } of kpiList) {
+      const card = dashboardSection.querySelector(`#${id}`); if (!card) continue;
+      const valueEl = card.querySelector('.value');
+      const trendEl = card.querySelector('.trend');
+      const iconEl = card.querySelector('.icon');
+      const percentEl = card.querySelector('.percent');
+
+      let targetBadge = card.querySelector('.target-badge');
+      if (!targetBadge) { targetBadge = document.createElement('span'); targetBadge.className = 'target-badge'; card.appendChild(targetBadge); }
+
+      let mini = card.querySelector('.mini-score');
+      if (!mini && item !== '点数') { mini = document.createElement('span'); mini.className = 'mini-score'; card.appendChild(mini); }
+
+      const rec = (data || []).find(r => r.項目 === item);
+      const target = rec && rec.目標数値 != null ? Number(rec.目標数値) : null;
+      let current = rec && rec.実績 != null ? Number(rec.実績) : null;
+
+      if (item === '点数') {
+        const totalScore = await computeScoreByItems(store, month);
+        valueEl.textContent = totalScore != null ? `${totalScore} / 110点` : `-- / 110点`;
+      } else {
+        let text = '--';
+        if (current != null) {
+          if (percentItems.has(item)) {
+            const iv = asPercentInt(current);
+            text = `${iv}%`;
+          } else if (yenItems.has(item)) {
+            const v = roundIfNeeded(item, current);
+            text = `${v.toLocaleString()} ${unitMap[item]}`;
+          } else if (item === 'PAリファラル採用') {
+            text = `${Math.round(Number(current))} ${unitMap[item]}`;
+          } else if (item === 'CSアンケート') {
+            text = `${Number(current).toLocaleString()} ${unitMap[item]}`;
+          } else {
+            text = `${Number(current).toLocaleString()}${unitMap[item] || ''}`;
+          }
+        }
+        valueEl.textContent = text;
+      }
+
+      if (item === '点数') {
+        targetBadge.textContent = '目標：110点';
+      } else if (percentItems.has(item)) {
+        const tv = target != null ? asPercentInt(target) : null;
+        targetBadge.textContent = tv != null ? `目標：${tv}%` : '目標：--';
+      } else if (yenItems.has(item)) {
+        const tv = target != null ? roundIfNeeded(item, target) : null;
+        targetBadge.textContent = tv != null ? `目標：${tv.toLocaleString()} ${unitMap[item]}` : '目標：--';
+      } else {
+        targetBadge.textContent = target != null ? `目標：${Number(target).toLocaleString()}${unitMap[item] || ''}` : '目標：--';
+      }
+
+      const prev = await fetchPrevValue(store, month, item);
+      if (item !== '点数' && prev !== null && current != null) {
+        const diff = current - prev;
+        const rate = prev === 0 ? 0 : Math.round((diff / prev) * 100);
+        if (rate >= 0) { iconEl.textContent = '▲'; trendEl.classList.remove('down'); trendEl.classList.add('up'); }
+        else { iconEl.textContent = '▼'; trendEl.classList.remove('up'); trendEl.classList.add('down'); }
+        percentEl.textContent = Math.abs(rate) + '%';
+      } else {
+        percentEl.textContent = '--%';
+      }
+    }
+    await renderScoreRanking(month);
+  }
+
+  async function fetchPrevValue(store, month, item) {
+    const y = Number(month.slice(0, 4)), m = Number(month.slice(4, 6));
+    const prev = new Date(y, m - 2, 1);
+    const prevStr = `${prev.getFullYear()}${String(prev.getMonth() + 1).padStart(2, '0')}`;
+    const { data, error } = await supabase
+      .from("店舗診断表").select("項目,実績")
+      .eq("店舗名", store).eq("月", prevStr);
+    if (error || !data) return null;
+    const rec = data.find(r => r.項目 === item); return rec ? Number(rec.実績) : null;
+  }
+
+  // ✎ボタン配置 & カードクリック（ダッシュボード内モーダルは別HTMLなら無効化してOK）
+  function attachEditButtonsAndCardClicks() {
+    kpiList.forEach(({ id, item }) => {
+      const card = dashboardSection.querySelector(`#${id}`); if (!card) return;
+      // 詳細モーダルがSPAにある場合のみ活性化。なければ編集だけにする/何もしない
+      // ここでは編集ボタンのみ配置（例）
+      if (!card.querySelector('.edit-btn')) {
+        const btn = document.createElement('button'); btn.className = 'edit-btn'; btn.title = `${item}を編集`; btn.innerText = '✎';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          alert('編集モーダルはSPA版に未配置です。（必要なら index.html にモーダルを組み込んでください）');
+        });
+        card.appendChild(btn);
+      }
+    });
+  }
+
+  // 初期化
+  const today = new Date(); targetDateInput.value = today.toISOString().slice(0, 7);
+  await populateStoreSelects();
+  chartStoreSelect.value = storeSelectDash.value;
+  await populateFiscalYears(storeSelectDash.value);
+  attachEditButtonsAndCardClicks();
+  await updateAllKPIs(storeSelectDash.value, targetDateInput.value);
+  await renderAllCharts();
+
+  // イベント
+  storeSelectDash.addEventListener("change", async () => { await updateAllKPIs(storeSelectDash.value, targetDateInput.value); });
+  targetDateInput.addEventListener("change", () => { updateAllKPIs(storeSelectDash.value, targetDateInput.value); });
+  chartStoreSelect.addEventListener("change", async (e) => { await populateFiscalYears(e.target.value); await renderAllCharts(); });
+  fiscalYearSelect.addEventListener("change", renderAllCharts);
+  toggleYoy.addEventListener("change", renderAllCharts);
+}
