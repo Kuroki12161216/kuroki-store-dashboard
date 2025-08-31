@@ -1,4 +1,3 @@
-// scripts.js (type="module")
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 /* ===== Supabase設定 ===== */
@@ -7,11 +6,12 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqZ3lsenlweXVuYmNldHZxdW9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA4MTk3MjgsImV4cCI6MjA1NjM5NTcyOH0.tRwiVkMiCIvONpjyAJAt3FZ2iUIy6ihaAiHMtZ3bFI0";
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-/* ===== DOM ===== */
+/* ===== DOM（セクション） ===== */
 const taskSection = document.getElementById("taskSection");
 const settingsSection = document.getElementById("settingsSection");
 const dashboardSection = document.getElementById("dashboardSection");
 
+/* ===== タスク DOM ===== */
 const storeSelectTask = document.getElementById("storeSelectTask");
 const tasksTableBody = document.querySelector("#tasksTable tbody");
 const tasksListMobile = document.getElementById("tasksListMobile");
@@ -21,6 +21,9 @@ const taskAddItemInput = document.getElementById("taskAddItemInput");
 const taskAddDetailInput = document.getElementById("taskAddDetailInput");
 const taskAddDueInput = document.getElementById("taskAddDueInput");
 const taskAddOwnerInput = document.getElementById("taskAddOwnerInput");
+
+/* ===== 通知UI ===== */
+const $notifBadge = document.getElementById('notificationStatus');
 
 /* ===== 状態 ===== */
 let tasksDataGlobal = [];
@@ -33,12 +36,16 @@ let salesChart = null, unitChart = null, labourChart = null;
 
 /* ===== 初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
-  await initStoreDropdowns();
-  await fetchAndDisplayTasks();
-  subscribeTasksRealtime();
+  await initStoreDropdowns();     // タスク用 店舗選択を埋める
+  await fetchAndDisplayTasks();   // タスク描画
+  subscribeTasksRealtime();       // Realtime購読
+  window.refreshTasks = () => fetchAndDisplayTasks();
 
-  // 初期表示はダッシュボード
-  await showDashboardSection();
+  // 通知UI初期化
+  updateNotificationUI();
+
+  // ハッシュが#dashboardならダッシュボード表示、なければダッシュボードを既定表示
+  showDashboardSection();
 });
 
 /* ===== 画面切替 ===== */
@@ -59,7 +66,6 @@ window.showSettingsSection = function () {
 };
 window.showDashboardSection = async function () {
   hideAllSections();
-  if (!dashboardSection) { alert("dashboardSection が見つかりません。index.html を確認してください。"); return; }
   dashboardSection.style.display = 'block';
   history.replaceState(null, "", "#dashboard");
   if (!dashboardInitialized) {
@@ -80,7 +86,6 @@ if ('serviceWorker' in navigator) {
 }
 
 /* ===== 通知UI ===== */
-const $notifBadge = document.getElementById('notificationStatus');
 window.requestNotificationPermission = async function () {
   try {
     if (!('Notification' in window)) return alert('このブラウザは通知に対応していません。');
@@ -96,7 +101,6 @@ function updateNotificationUI() {
   else if (perm === 'denied') { $notifBadge.textContent = '拒否'; $notifBadge.classList.add('badge-perm-denied'); }
   else { $notifBadge.textContent = '未許可'; $notifBadge.classList.add('badge-perm-default'); }
 }
-updateNotificationUI();
 
 /* ===== CSV D&D ===== */
 export function handleDragEnter(e){ e.preventDefault(); }
@@ -119,26 +123,24 @@ window.handleDragEnter = handleDragEnter;
 window.handleDragOver = handleDragOver;
 window.handleDrop = handleDrop;
 
-/* ===== 店舗 初期化（タスク用のみ） ===== */
+/* ===== 店舗 初期化（タスク用セレクト） ===== */
 async function initStoreDropdowns() {
   const { data, error } = await supabase.from("店舗診断表").select("店舗名");
   if (error) { console.error("店舗一覧取得エラー:", error); return; }
   const storeNames = [...new Set((data || []).map((item) => item.店舗名))];
 
-  // タスク一覧のフィルタ
+  // タスク一覧フィルタに「全店舗」を追加
   if (!storeSelectTask.querySelector('option[value="all"]')) {
     const allOpt = document.createElement("option");
     allOpt.value = "all"; allOpt.textContent = "全店舗";
     storeSelectTask.appendChild(allOpt);
   }
+
   storeNames.forEach((name) => {
     const opt1 = document.createElement("option");
     opt1.value = name; opt1.textContent = name;
     storeSelectTask.appendChild(opt1);
-  });
 
-  // タスク追加フォームの店舗
-  storeNames.forEach((name) => {
     const opt2 = document.createElement("option");
     opt2.value = name; opt2.textContent = name;
     taskAddStoreSelect.appendChild(opt2);
@@ -146,10 +148,6 @@ async function initStoreDropdowns() {
 }
 
 /* ===== タスク ===== */
-window.addTaskFromModal = async function () {
-  alert('このUIではモーダル送信は未実装です。タスク一覧の「タスク追加」をご利用ください。');
-};
-
 window.addTaskFromList = async function () {
   const storeName = taskAddStoreSelect.value;
   const item = taskAddItemInput.value;
@@ -159,7 +157,7 @@ window.addTaskFromList = async function () {
   if (!storeName || !item || !detail) return alert("店舗名、項目、タスクは必須です");
 
   // 前月 yyyymm
-  const dueDate = new Date(due);
+  const dueDate = new Date(due || Date.now());
   const dueHumanMonth = dueDate.getMonth() + 1;
   let diagnosticYear = dueDate.getFullYear();
   let diagnosticMonth = (dueHumanMonth === 1) ? (diagnosticYear--, 12) : (dueHumanMonth - 1);
@@ -168,7 +166,8 @@ window.addTaskFromList = async function () {
 
   const { data: diagData, error: diagError } = await supabase
     .from("店舗診断表").select("id")
-    .eq("店舗名", storeName).eq("項目", item).eq("月", diagnosticDataMonth);
+    .eq("店舗名", storeName).eq("項目", item).eq("月", diagnosticDataMonth)
+    .order("id", { ascending: true });
   if (diagError) return console.error("店舗診断表検索エラー:", diagError);
   if (!diagData?.length) return alert("対応する店舗診断表が見つかりません");
 
@@ -186,7 +185,7 @@ window.addTaskFromList = async function () {
 };
 
 window.fetchAndDisplayTasks = async function () {
-  const selectedStore = storeSelectTask.value;
+  const selectedStore = storeSelectTask.value || "all";
   let query = supabase.from("タスクテーブル").select("*");
 
   if (selectedStore !== "all") {
@@ -215,11 +214,14 @@ window.fetchAndDisplayTasks = async function () {
 };
 
 function renderTasks() {
+  // PC: テーブル
   tasksTableBody.innerHTML = "";
+  // Mobile: list
   tasksListMobile.innerHTML = "";
 
   let overdueCount = 0;
   tasksDataGlobal.forEach((row) => {
+    // ---------- PC テーブル行 ----------
     const tr = document.createElement("tr");
     tr.dataset.taskId = row.id;
 
@@ -243,6 +245,7 @@ function renderTasks() {
     tr.append(storeTd, itemTd, taskTd, dueTd, ownerTd, operationTd);
     tasksTableBody.appendChild(tr);
 
+    // ---------- モバイル list-group アイテム ----------
     const li = document.createElement("div");
     li.className = "list-group-item p-0";
 
@@ -275,7 +278,7 @@ function renderTasks() {
     tasksListMobile.appendChild(li);
 
     addMobileSwipe(li, fore, async () => {
-      return await confirmAndDelete(row.id);
+      return await confirmAndDelete(row.id); // true=削除実行 / false=取り消し
     });
   });
 
@@ -314,11 +317,12 @@ function addMobileSwipe(container, foreEl, onConfirmDelete) {
   document.addEventListener('mouseup',   onEnd);
 }
 
-/* ===== トースト：削除 or 取り消し ===== */
+/* ===== トースト：削除 or 取り消し（LINE風・狭幅オーバーレイ） ===== */
 function showDeleteToast() {
   return new Promise((resolve) => {
     document.getElementById('__confirmOverlay')?.remove();
 
+    // 背景固定
     const scrollY = window.scrollY || window.pageYOffset;
     const body = document.body;
     const prevBodyStyle = {
@@ -332,6 +336,7 @@ function showDeleteToast() {
     body.style.width = '100%';
     body.style.overflow = 'hidden';
 
+    // 薄いオーバーレイ
     const overlay = document.createElement('div');
     overlay.id = '__confirmOverlay';
     overlay.style.position = 'fixed';
@@ -343,6 +348,7 @@ function showDeleteToast() {
     overlay.style.justifyContent = 'center';
     overlay.style.padding = '16px';
 
+    // ダイアログ
     const dialog = document.createElement('div');
     dialog.setAttribute('role', 'dialog');
     dialog.setAttribute('aria-modal', 'true');
@@ -361,6 +367,7 @@ function showDeleteToast() {
     dialog.style.opacity = '0';
     dialog.style.transition = 'opacity .14s ease, transform .14s ease';
 
+    // タイトル
     const title = document.createElement('div');
     title.id = '__confirmTitle';
     title.className = 'fw-semibold';
@@ -368,6 +375,7 @@ function showDeleteToast() {
     title.style.marginBottom = '12px';
     title.textContent = 'このタスクを削除しますか？';
 
+    // ボタン行
     const btnRow = document.createElement('div');
     btnRow.style.display = 'flex';
     btnRow.style.gap = '8px';
@@ -394,16 +402,18 @@ function showDeleteToast() {
     btnCancel.textContent = '取消';
     commonBtnStyle(btnCancel);
 
-    btnRow.append(btnCancel, btnDelete);
+    btnRow.append(btnCancel, btnDelete); // 左=取消 / 右=削除
     dialog.append(title, btnRow);
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
+    // フェードイン
     requestAnimationFrame(() => {
       dialog.style.opacity = '1';
       dialog.style.transform = 'translateY(0)';
     });
 
+    // フォーカス制御
     setTimeout(() => dialog.focus(), 0);
     const focusables = [btnCancel, btnDelete];
     const onKeydown = (e) => {
@@ -419,16 +429,15 @@ function showDeleteToast() {
     };
     dialog.addEventListener('keydown', onKeydown);
 
+    // 背景のスクロール抑止
     const stopScroll = (e) => e.preventDefault();
     overlay.addEventListener('wheel', stopScroll, { passive: false });
     overlay.addEventListener('touchmove', stopScroll, { passive: false });
 
+    // 外側クリックで取消
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay) cleanup('cancel');
     });
-
-    btnCancel.addEventListener('click', () => cleanup('cancel'));
-    btnDelete.addEventListener('click', () => cleanup('delete'));
 
     function cleanup(result) {
       dialog.removeEventListener('keydown', onKeydown);
@@ -436,6 +445,7 @@ function showDeleteToast() {
       overlay.removeEventListener('touchmove', stopScroll);
       overlay.remove();
 
+      // 背景固定解除＆元位置
       body.style.position = prevBodyStyle.position;
       body.style.top = prevBodyStyle.top;
       body.style.width = prevBodyStyle.width;
@@ -444,9 +454,16 @@ function showDeleteToast() {
 
       resolve(result);
     }
+
+    btnCancel.addEventListener('click', () => cleanup('cancel'));
+    btnDelete.addEventListener('click', () => cleanup('delete'));
   });
 }
 
+/**
+ * トーストで確認→「削除」選択時に Supabase 削除を実行
+ * 戻り値: Promise<boolean>  true=削除完了 / false=取り消し
+ */
 async function confirmAndDelete(id) {
   const action = await showDeleteToast();
   if (action !== 'delete') return false;
@@ -454,6 +471,7 @@ async function confirmAndDelete(id) {
   try {
     const { error } = await supabase.from("タスクテーブル").delete().eq("id", id);
     if (error) throw error;
+    // PCとモバイル双方に反映
     fetchAndDisplayTasks();
     return true;
   } catch (e) {
@@ -462,6 +480,7 @@ async function confirmAndDelete(id) {
   }
 }
 
+/* ===== PCボタンの削除もトースト確認に統一 ===== */
 async function deleteTask(id) {
   const ok = await confirmAndDelete(id);
   if (ok) fetchAndDisplayTasks();
@@ -574,6 +593,8 @@ function parseToISO(s) {
 }
 function isoToJPMonthDay(iso) { const [, mo, da] = iso.split('-'); return `${mo}月${da}日`; }
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+
+/* 期限超過バッジ（必要ならここで表示先へ反映） */
 function updateOverdueBadge(/*count*/) {}
 
 /* ======================================================================
@@ -595,7 +616,7 @@ async function initDashboard() {
   await ensureChartJs();
 
   // ダッシュボード内のDOMを取得（dashboardSection 配下）
-  const $ = (sel) => dashboardSection.querySelector(sel);
+  const $ = (id) => dashboardSection.querySelector(id);
 
   const storeSelectDash = $("#store-select");
   const chartStoreSelect = $("#chart-store-select");
@@ -604,7 +625,7 @@ async function initDashboard() {
   const toggleYoy = $("#toggle-yoy");
   const rankTableBody = $("#score-ranking-table tbody");
 
-  // 🔽 仮説モーダル関連
+  // ===== 仮説・ネクスト & タスク送信用DOM =====
   const modal = $("#hypo-modal");
   const modalClose = $("#hypo-close");
   const titleStore = $("#hypo-title-store");
@@ -617,6 +638,13 @@ async function initDashboard() {
   const textareaNext = $("#next-text");
   const btnSave = $("#hypo-save");
 
+  // ▼ タスク送信用
+  const taskDetailInput = $("#hypo-task-detail");
+  const taskDueInput = $("#hypo-task-due");
+  const taskOwnerInput = $("#hypo-task-owner");
+  const btnTaskSend = $("#hypo-task-send");
+
+  // KPIカードIDと項目対応
   const kpiList = [
     { id: 'kpi-sales', item: '売上' },
     { id: 'kpi-unitprice', item: '単価' },
@@ -645,12 +673,15 @@ async function initDashboard() {
   const ctxUnit = $("#unitPriceChart")?.getContext("2d");
   const ctxLabour = $("#labourSalesChart")?.getContext("2d");
 
-  // Utils
+  // Utils（ダッシュボード用）
   const toYYYYMM = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
   const labelYYYYMM = (yyyymm) => `${yyyymm.slice(0, 4)}/${yyyymm.slice(4, 6)}`;
   const formatYen = (v) => '¥ ' + Number(v ?? 0).toLocaleString();
   const currentFYStartYear = (() => { const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1; return (m >= 4) ? y : (y - 1); })();
-  function getFiscalMonths(fyStartYear) { const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr; }
+
+  function getFiscalMonths(fyStartYear) {
+    const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr;
+  }
 
   // 店舗一覧
   async function getUniqueStores() {
@@ -816,7 +847,7 @@ async function initDashboard() {
     });
   }
 
-  // KPI更新（値・バッジ・矢印）
+  // KPI更新
   async function updateAllKPIs(store, dateStr) {
     if (!store || !dateStr) return;
     const month = dateStr.slice(0, 7).replace("-", "");
@@ -921,7 +952,6 @@ async function initDashboard() {
     const monthStr = (targetDateInput.value || '').slice(0,7).replace('-', '');
     if (!store || !monthStr) { alert('店舗と日付を選択してください。'); return; }
 
-    // レコード取得（最新1件）
     const { data, error } = await supabase
       .from('店舗診断表')
       .select('id, 仮説, ネクストアクション')
@@ -932,11 +962,10 @@ async function initDashboard() {
       .limit(1);
 
     if (error) { console.error(error); alert('レコード取得に失敗しました'); return; }
-    if (!data?.length) { alert('該当の店舗・月・項目のレコードが見つかりません。CSVを取り込み済みか確認してください。'); return; }
+    if (!data?.length) { alert('該当レコードが見つかりません（CSV取り込み済みか確認）'); return; }
 
     const row = data[0];
 
-    // タイトル・フィールド初期化
     titleStore.textContent = store;
     titleSub.textContent = `${monthStr.slice(0,4)}/${monthStr.slice(4,6)}・${item}`;
     inputId.value = row.id;
@@ -946,13 +975,19 @@ async function initDashboard() {
     textareaHypo.value = row.仮説 || '';
     textareaNext.value = row.ネクストアクション || '';
 
-    // 表示
+    // タスク欄は毎回クリア
+    taskDetailInput.value = '';
+    taskDueInput.value = '';
+    taskOwnerInput.value = '';
+
     modal.removeAttribute('hidden');
   }
 
   // モーダル操作
   modalClose?.addEventListener('click', () => modal.setAttribute('hidden', ''));
   modal?.addEventListener('click', (e) => { if (e.target === modal) modal.setAttribute('hidden', ''); });
+
+  // 仮説・ネクスト保存
   btnSave?.addEventListener('click', async () => {
     const id = inputId.value;
     const hypo = textareaHypo.value;
@@ -969,7 +1004,28 @@ async function initDashboard() {
     modal.setAttribute('hidden', '');
   });
 
-  // 鉛筆ボタンを各カードに設置
+  // ★ タスク送信
+  btnTaskSend?.addEventListener('click', async () => {
+    const diagId = inputId.value;
+    const item = inputItem.value;            // 現在のKPI項目を使用（隠し）
+    const detail = taskDetailInput.value.trim();
+    const due = taskDueInput.value;          // yyyy-mm-dd（任意）
+    const owner = taskOwnerInput.value.trim();
+
+    if (!diagId) return alert('診断表IDが取得できませんでした。');
+    if (!item || !detail) return alert('「項目」「タスク」は必須です');
+
+    const { error } = await supabase.from("タスクテーブル").insert([
+      { 項目: item, タスク: detail, 期限: due, 責任者: owner, 店舗診断表_id: diagId }
+    ]);
+
+    if (error) { alert("タスク追加エラー: " + error.message); return; }
+    alert("タスクを追加しました");
+    taskDetailInput.value = ""; taskDueInput.value = ""; taskOwnerInput.value = "";
+    if (typeof fetchAndDisplayTasks === 'function') fetchAndDisplayTasks();
+  });
+
+  // 鉛筆ボタン設置（クリックでopenHypoModal）
   function attachEditButtons() {
     kpiList.forEach(({ id, item }) => {
       const card = dashboardSection.querySelector(`#${id}`);
@@ -977,7 +1033,7 @@ async function initDashboard() {
       if (!card.querySelector('.edit-btn')) {
         const btn = document.createElement('button');
         btn.className = 'edit-btn';
-        btn.title = `${item} の仮説／ネクストを編集`;
+        btn.title = `${item} の仮説／ネクスト・タスク送信`;
         btn.innerText = '✎';
         btn.addEventListener('click', (e) => {
           e.stopPropagation();

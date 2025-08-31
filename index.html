@@ -184,7 +184,7 @@
 
   <div class="container-fluid">
     <div class="row">
-      <!-- デスクトップ：サイドバー -->
+      <!-- デスクトップ：サイドバー（ダッシュボードを先頭） -->
       <nav class="col-md-2 d-none d-md-block bg-light sidebar">
         <div class="position-sticky pt-3">
           <ul class="nav flex-column">
@@ -200,7 +200,7 @@
         <div class="container mt-3">
 
           <!-- ダッシュボード -->
-          <section id="dashboardSection" style="display:none;">
+          <section id="dashboardSection" style="display:block;">
             <h1 class="mb-3">ダッシュボード</h1>
             <div class="db-container">
               <!-- 上段：ヘッダー + KPI -->
@@ -283,7 +283,7 @@
                 <div class="chart-card"><canvas id="labourSalesChart"></canvas></div>
               </div>
 
-              <!-- 🔽 ここから：仮説／ネクスト編集モーダル（ダッシュボード専用） -->
+              <!-- 仮説／ネクスト＋タスク送信モーダル -->
               <div id="hypo-modal" class="modal-lite" hidden>
                 <div class="content">
                   <div class="modal-head">
@@ -297,6 +297,8 @@
                   <input type="hidden" id="hypo-store">
                   <input type="hidden" id="hypo-month">
                   <input type="hidden" id="hypo-item">
+
+                  <!-- 仮説・ネクスト -->
                   <div class="form-row">
                     <label>仮説</label>
                     <textarea id="hypo-text" rows="4" placeholder="仮説を入力"></textarea>
@@ -308,16 +310,32 @@
                   <div class="actions">
                     <button class="btn-lite save" id="hypo-save">保存</button>
                   </div>
+
+                  <hr style="margin:12px 0;">
+
+                  <!-- タスク送信（項目は隠しで現在KPIを使用） -->
+                  <div class="form-row"><label>タスク</label>
+                    <input id="hypo-task-detail" type="text" placeholder="例：棚割り見直し">
+                  </div>
+                  <div class="form-row"><label>期限</label>
+                    <input id="hypo-task-due" type="date">
+                  </div>
+                  <div class="form-row"><label>責任者</label>
+                    <input id="hypo-task-owner" type="text" placeholder="例：佐藤">
+                  </div>
+                  <div class="actions">
+                    <button class="btn-lite save" id="hypo-task-send">タスク送信</button>
+                  </div>
                 </div>
               </div>
-              <!-- 🔼 ここまで -->
             </div>
           </section>
 
           <!-- タスク一覧 -->
           <section id="taskSection" style="display:none;">
-            <!-- （前回の内容のまま） -->
             <h1 class="mb-3">タスク一覧</h1>
+
+            <!-- 追加フォーム -->
             <div class="border rounded p-3 mb-3 mt-3">
               <h2 class="h5 mb-3">タスク追加</h2>
               <div class="row g-2 align-items-end">
@@ -355,6 +373,7 @@
               </div>
             </div>
 
+            <!-- フィルタ -->
             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
               <div>
                 <label for="storeSelectTask" class="form-label me-2 mb-0">店舗選択:</label>
@@ -365,6 +384,7 @@
               </button>
             </div>
 
+            <!-- PC: テーブル -->
             <div id="tasksTableWrapper" class="table-responsive">
               <table id="tasksTable" class="table table-bordered table-striped align-middle">
                 <thead class="table-light">
@@ -381,6 +401,7 @@
               </table>
             </div>
 
+            <!-- モバイル: list-group -->
             <div id="tasksListMobileWrapper" class="my-2" style="display:none;">
               <div id="tasksListMobile" class="list-group list-group-flush"></div>
             </div>
@@ -388,7 +409,6 @@
 
           <!-- 設定 -->
           <section id="settingsSection" style="display:none;">
-            <!-- （前回の内容のまま） -->
             <h1 class="mb-3">設定</h1>
             <div class="border rounded p-3 mb-4">
               <h2 class="h5 mb-3">通知</h2>
@@ -399,6 +419,7 @@
               <p class="text-muted mt-2 mb-0">ブラウザの通知許可状況に応じてバッジとボタンが切り替わります。</p>
             </div>
 
+            <!-- CSVアップロード -->
             <div class="border rounded p-3">
               <h2 class="h5 mb-3">CSVアップロード</h2>
               <p>下記エリアにCSVファイルをドラッグ＆ドロップしてください。</p>
