@@ -283,51 +283,63 @@
                 <div class="chart-card"><canvas id="labourSalesChart"></canvas></div>
               </div>
 
-              <!-- 仮説／ネクスト＋タスク送信モーダル -->
-              <div id="hypo-modal" class="modal-lite" hidden>
+              <!-- ▼▼ 数値編集モーダル（✎で開く） ▼▼ -->
+              <div id="edit-modal" class="modal-lite" hidden>
                 <div class="content">
                   <div class="modal-head">
                     <div class="title-wrap">
-                      <div class="title-line store" id="hypo-title-store"></div>
-                      <div class="title-line sub" id="hypo-title-sub"></div>
+                      <div class="title-line store" id="edit-title-store"></div>
+                      <div class="title-line sub" id="edit-title-sub"></div>
                     </div>
-                    <button class="close-btn" id="hypo-close" aria-label="閉じる">×</button>
+                    <button class="close-btn" id="edit-close" aria-label="閉じる">×</button>
                   </div>
-                  <input type="hidden" id="hypo-id">
-                  <input type="hidden" id="hypo-store">
-                  <input type="hidden" id="hypo-month">
-                  <input type="hidden" id="hypo-item">
 
-                  <!-- 仮説・ネクスト -->
-                  <div class="form-row">
-                    <label>仮説</label>
-                    <textarea id="hypo-text" rows="4" placeholder="仮説を入力"></textarea>
-                  </div>
-                  <div class="form-row">
-                    <label>ネクストアクション</label>
-                    <textarea id="next-text" rows="4" placeholder="次にやることを入力"></textarea>
-                  </div>
+                  <input id="edit-store" type="hidden">
+                  <input id="edit-month" type="hidden">
+                  <input id="edit-item" type="hidden">
+
+                  <div class="form-row"><label>目標数値</label><input id="edit-target" type="number" step="any" placeholder="例）100000"></div>
+                  <div class="form-row"><label>実績</label><input id="edit-actual" type="number" step="any" placeholder="例）95000"></div>
+                  <div class="hint">空欄保存＝未入力として扱います。</div>
                   <div class="actions">
-                    <button class="btn-lite save" id="hypo-save">保存</button>
-                  </div>
-
-                  <hr style="margin:12px 0;">
-
-                  <!-- タスク送信（項目は隠しで現在KPIを使用） -->
-                  <div class="form-row"><label>タスク</label>
-                    <input id="hypo-task-detail" type="text" placeholder="例：棚割り見直し">
-                  </div>
-                  <div class="form-row"><label>期限</label>
-                    <input id="hypo-task-due" type="date">
-                  </div>
-                  <div class="form-row"><label>責任者</label>
-                    <input id="hypo-task-owner" type="text" placeholder="例：佐藤">
-                  </div>
-                  <div class="actions">
-                    <button class="btn-lite save" id="hypo-task-send">タスク送信</button>
+                    <button class="btn-lite cancel" id="btn-cancel">キャンセル</button>
+                    <button class="btn-lite save" id="btn-save">保存</button>
                   </div>
                 </div>
               </div>
+
+              <!-- ▼▼ 詳細（仮説・ネクスト＆タスク送信）モーダル（カードタップで開く） ▼▼ -->
+              <div id="detail-modal" class="modal-lite" hidden>
+                <div class="content">
+                  <div class="modal-head">
+                    <div class="title-wrap">
+                      <div class="title-line store" id="detail-title-store"></div>
+                      <div class="title-line sub" id="detail-title-sub"></div>
+                    </div>
+                    <button class="close-btn" id="detail-close" aria-label="閉じる">×</button>
+                  </div>
+
+                  <input type="hidden" id="detail-id">
+                  <input type="hidden" id="detail-store">
+                  <input type="hidden" id="detail-month">
+                  <input type="hidden" id="detail-item">
+
+                  <div class="form-row"><label>仮説</label><textarea id="detail-hypo" rows="3" placeholder="仮説を入力"></textarea></div>
+                  <div class="form-row"><label>ネクストアクション</label><textarea id="detail-next" rows="3" placeholder="次にやることを入力"></textarea></div>
+                  <div class="actions"><button class="btn-lite save" id="btn-detail-save">仮説・ネクストを保存</button></div>
+
+                  <hr style="margin:12px 0;">
+                  <input type="hidden" id="task-item">
+                  <div class="form-row"><label>タスク</label><input id="task-detail" type="text" placeholder="例：棚割り見直し"></div>
+                  <div class="form-row"><label>期限</label><input id="task-due" type="date"></div>
+                  <div class="form-row"><label>責任者</label><input id="task-owner" type="text" placeholder="例：佐藤"></div>
+                  <div class="actions">
+                    <button class="btn-lite save" id="btn-detail-send">タスク送信</button>
+                  </div>
+                </div>
+              </div>
+              <!-- ▲▲ モーダルここまで ▲▲ -->
+
             </div>
           </section>
 
