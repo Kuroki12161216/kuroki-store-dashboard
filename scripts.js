@@ -597,7 +597,113 @@ function isoToJPMonthDay(iso) { const [, mo, da] = iso.split('-'); return `${mo}
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
 
 /* 期限超過バッジ（必要ならここで表示先へ反映） */
-function updateOverdueBadge(/*count*/) {}
+// 期限超過件数に応じて、UIバッジ・アプリアイコンバッジ・通知を制御
+async function updateOverdueBadge(count = 0) {
+  // --- 正規化 ---
+  count = Number.isFinite(+count) && +count > 0 ? Math.floor(+count) : 0;
+
+  // --- 画面上のバッジ更新（あれば）---
+  try {
+    const badgeEl = document.querySelector('[data-role="overdue-badge"]') || document.getElementById('overdueBadge');
+    if (badgeEl) {
+      if (count > 0) {
+        badgeEl.textContent = String(count);
+        badgeEl.classList.remove('d-none', 'visually-hidden');
+      } else {
+        badgeEl.textContent = '';
+        badgeEl.classList.add('d-none');
+      }
+    }
+  } catch (e) {
+    console.warn('Badge element update failed:', e);
+  }
+
+  // --- タイトルに件数をバッジ表示 ---
+  try {
+    const base = updateOverdueBadge._baseTitle || document.title.replace(/^\(\d+\)\s*/,'');
+    updateOverdueBadge._baseTitle = base;
+    document.title = (count > 0 ? `(${count}) ` : '') + base;
+  } catch (e) {
+    console.warn('Title update failed:', e);
+  }
+
+  // --- PWA Badging API（対応ブラウザのみ）---
+  try {
+    if ('setAppBadge' in navigator) {
+      if (count > 0) {
+        await navigator.setAppBadge(count);
+      } else {
+        await navigator.clearAppBadge?.();
+      }
+    }
+  } catch (e) {
+    console.warn('App badge update failed:', e);
+  }
+
+  // --- 通知制御 ---
+  // 条件: 件数が増えた / 画面が非アクティブで一定時間（2h）以上通知していない、など
+  try {
+    const LS_KEY_LAST_COUNT = 'overdueBadge:lastCount';
+    const LS_KEY_LAST_NOTIFY = 'overdueBadge:lastNotifyAt';
+    const now = Date.now();
+    const lastCount = parseInt(localStorage.getItem(LS_KEY_LAST_COUNT) || '0', 10);
+    const lastNotifyAt = parseInt(localStorage.getItem(LS_KEY_LAST_NOTIFY) || '0', 10);
+    const increased = count > lastCount;
+    const twoHours = 2 * 60 * 60 * 1000;
+    const quietPeriod = now - lastNotifyAt < twoHours;
+
+    // 通知するかの判定
+    const shouldNotify =
+      count > 0 &&
+      (increased || (document.hidden && !quietPeriod));
+
+    // 先に保存（失敗しても通知判定は変わらない）
+    localStorage.setItem(LS_KEY_LAST_COUNT, String(count));
+
+    if (!shouldNotify) return;
+
+    // 通知権限チェック
+    if ('Notification' in window) {
+      let perm = Notification.permission;
+      if (perm === 'default') {
+        // 可能ならその場で権限確認（ユーザー操作中で呼ぶのが理想だが、ここでは一括制御）
+        perm = await Notification.requestPermission();
+      }
+      if (perm === 'granted') {
+        const title = `${count}件の期限超過タスク`;
+        const newly = Math.max(0, count - lastCount);
+        const body = increased && newly > 0
+          ? `新たに${newly}件が期限切れになりました。確認してください。`
+          : `期限超過中のタスクが${count}件あります。`;
+
+        const options = {
+          body,
+          tag: 'overdue-tasks',        // 同一タグでまとめて更新
+          renotify: true,              // 同タグ通知を上書きしつつ音/バイブ可
+          requireInteraction: false,   // 自動で消える
+          timestamp: now,
+          // 以下はあなたのPWAのアイコンパスに合わせて調整してください
+          icon: '/icons/icon-192.png',
+          badge: '/icons/badge.png',
+          data: { url: location.origin + location.pathname + '#tasks' },
+          actions: [{ action: 'open', title: 'タスクを開く' }],
+        };
+
+        // SW経由で表示できればそちらを優先（バックグラウンドでも表示可）
+        const reg = await navigator.serviceWorker?.getRegistration();
+        if (reg && reg.showNotification) {
+          await reg.showNotification(title, options);
+        } else {
+          // フォールバック
+          new Notification(title, options);
+        }
+        localStorage.setItem(LS_KEY_LAST_NOTIFY, String(now));
+      }
+    }
+  } catch (e) {
+    console.warn('Notification handling failed:', e);
+  }
+}
 
 /* ======================================================================
    ==================  ダッシュボード（SPA統合）  =======================
