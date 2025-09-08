@@ -186,28 +186,29 @@ window.addTaskFromList = async function () {
 
 window.fetchAndDisplayTasks = async function () {
   const selectedStore = storeSelectTask.value || "all";
-  let query = supabase.from("タスクテーブル").select("*");
 
+  // ❶ リレーションを inner join で取得（!inner を付ける）
+  let query = supabase
+    .from("タスクテーブル")
+    .select(`
+      id, 項目, タスク, 期限, 責任者, 店舗診断表_id,
+      店舗診断表!inner ( id, 店舗名 )
+    `);
+
+  // ❷ 店舗フィルタは埋め込み先に直接かける
   if (selectedStore !== "all") {
-    const { data: diagData, error: diagError } = await supabase
-      .from("店舗診断表").select("id, 店舗名");
-    if (diagError) { console.error("店舗診断表取得エラー:", diagError); return; }
-    const matchedIds = (diagData || []).filter(d => d.店舗名 === selectedStore).map(d => d.id);
-    if (!matchedIds.length) { tasksDataGlobal = []; renderTasks(); return; }
-    query = query.in("店舗診断表_id", matchedIds);
+    query = query.eq("店舗診断表.店舗名", selectedStore);
   }
 
   const { data: result, error } = await query;
   if (error) { console.error("タスク一覧取得エラー:", error); return; }
 
-  const diagIds = (result || []).map(r => r.店舗診断表_id);
-  let storeMap = {};
-  if (diagIds.length) {
-    const { data: diag, error: dErr } = await supabase
-      .from("店舗診断表").select("id, 店舗名").in("id", diagIds);
-    if (!dErr && diag) diag.forEach(d => { storeMap[d.id] = d.店舗名; });
-  }
-  tasksDataGlobal = (result || []).map(r => ({ ...r, 店舗名: storeMap[r.店舗診断表_id] || "" }));
+  // ❸ 取得データから店舗名を展開（配列/オブジェクトどちらでもOKに）
+  tasksDataGlobal = (result || []).map(r => {
+    const rel = r.店舗診断表;
+    const storeName = Array.isArray(rel) ? (rel[0]?.店舗名 ?? "") : (rel?.店舗名 ?? "");
+    return { ...r, 店舗名: storeName };
+  });
 
   renderTasks();
   updateSortIndicators(null, null);
