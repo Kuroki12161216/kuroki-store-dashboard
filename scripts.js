@@ -46,6 +46,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // 既定はダッシュボード表示
   showDashboardSection();
+  await updateOverdueBadge();
 });
 
 /* ===== 画面切替 ===== */
@@ -962,4 +963,35 @@ async function initDashboard() {
   chartStoreSelect.addEventListener("change", async (e) => { await populateFiscalYears(e.target.value); await renderAllCharts(); });
   fiscalYearSelect.addEventListener("change", renderAllCharts);
   toggleYoy.addEventListener("change", renderAllCharts);
+}
+
+/* 期限超過バッジ（App Badge + 画面バッジ） */
+async function updateOverdueBadge(countFromList) {
+  // ① 今ある描画結果から渡された数を使う（未指定なら全体を集計）
+  let n = typeof countFromList === 'number' ? countFromList : await computeOverdueCountAll();
+
+  // ② 画面内の任意のバッジ要素（あれば更新）
+  const el = document.getElementById('overdueBadge');
+  if (el) {
+    el.textContent = n > 99 ? '99+' : String(n);
+    el.hidden = n === 0;
+  }
+
+  // ③ PWAアイコンのバッジ（Chromium系）
+  if ('setAppBadge' in navigator) {
+    try {
+      n > 0 ? await navigator.setAppBadge(n) : await navigator.clearAppBadge();
+    } catch (_) { /* noop */ }
+  }
+}
+
+// DBに boolean の「完了」列がある場合は `.eq('完了', false)` を足してください
+async function computeOverdueCountAll() {
+  const todayISO = new Date().toISOString().slice(0,10); // YYYY-MM-DD (0時基準)
+  const { count, error } = await supabase
+    .from('タスクテーブル')
+    .select('id', { count: 'exact', head: true })
+    .lt('期限', todayISO);
+  if (error) { console.error('期限切れ数集計エラー:', error); return 0; }
+  return count || 0;
 }
