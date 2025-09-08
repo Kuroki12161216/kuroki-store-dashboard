@@ -44,9 +44,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   // 通知UI初期化
   updateNotificationUI();
 
-  // 既定はダッシュボード表示
+  // ハッシュが#dashboardならダッシュボード表示、なければダッシュボードを既定表示
   showDashboardSection();
-  await updateOverdueBadge();
 });
 
 /* ===== 画面切替 ===== */
@@ -215,12 +214,16 @@ window.fetchAndDisplayTasks = async function () {
   updateSortIndicators(null, null);
 };
 
+
 function renderTasks() {
+  // PC: テーブル
   tasksTableBody.innerHTML = "";
+  // Mobile: list
   tasksListMobile.innerHTML = "";
 
   let overdueCount = 0;
   tasksDataGlobal.forEach((row) => {
+    // ---------- PC テーブル行 ----------
     const tr = document.createElement("tr");
     tr.dataset.taskId = row.id;
 
@@ -244,7 +247,7 @@ function renderTasks() {
     tr.append(storeTd, itemTd, taskTd, dueTd, ownerTd, operationTd);
     tasksTableBody.appendChild(tr);
 
-    // Mobile list
+    // ---------- モバイル list-group アイテム ----------
     const li = document.createElement("div");
     li.className = "list-group-item p-0";
 
@@ -276,7 +279,9 @@ function renderTasks() {
     li.appendChild(wrap);
     tasksListMobile.appendChild(li);
 
-    addMobileSwipe(li, fore, async () => await confirmAndDelete(row.id));
+    addMobileSwipe(li, fore, async () => {
+      return await confirmAndDelete(row.id); // true=削除実行 / false=取り消し
+    });
   });
 
   updateOverdueBadge(overdueCount);
@@ -286,16 +291,24 @@ function renderTasks() {
 function addMobileSwipe(container, foreEl, onConfirmDelete) {
   const THRESHOLD = 96;
   let startX = 0, dx = 0, dragging = false;
+
   const getX = (e) => e.touches ? e.touches[0].clientX : e.clientX;
 
   const onStart = (e) => { dragging = true; startX = getX(e); dx = 0; foreEl.style.transition = 'none'; };
-  const onMove  = (e) => { if (!dragging) return; dx = Math.min(0, getX(e) - startX); foreEl.style.transform = `translateX(${dx}px)`; };
+  const onMove  = (e) => {
+    if (!dragging) return;
+    dx = Math.min(0, getX(e) - startX);
+    foreEl.style.transform = `translateX(${dx}px)`;
+  };
   const onEnd   = async () => {
-    if (!dragging) return; dragging = false;
+    if (!dragging) return;
+    dragging = false;
     const fired = Math.abs(dx) > THRESHOLD;
     foreEl.style.transition = '';
     if (!fired) { foreEl.style.transform = 'translateX(0)'; return; }
-    const ok = await onConfirmDelete(); if (ok) container.remove(); else foreEl.style.transform = 'translateX(0)';
+    const ok = await onConfirmDelete();
+    if (ok) container.remove();
+    else foreEl.style.transform = 'translateX(0)';
   };
 
   foreEl.addEventListener('touchstart', onStart, { passive: true });
@@ -306,51 +319,161 @@ function addMobileSwipe(container, foreEl, onConfirmDelete) {
   document.addEventListener('mouseup',   onEnd);
 }
 
-/* ===== トースト確認→削除 ===== */
+/* ===== トースト：削除 or 取り消し（LINE風・狭幅オーバーレイ） ===== */
 function showDeleteToast() {
   return new Promise((resolve) => {
     document.getElementById('__confirmOverlay')?.remove();
 
+    // 背景固定
     const scrollY = window.scrollY || window.pageYOffset;
     const body = document.body;
-    const prev = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow };
-    body.style.position = 'fixed'; body.style.top = `-${scrollY}px`; body.style.width = '100%'; body.style.overflow = 'hidden';
+    const prevBodyStyle = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow,
+    };
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    body.style.overflow = 'hidden';
 
+    // 薄いオーバーレイ
     const overlay = document.createElement('div');
-    overlay.id = '__confirmOverlay'; overlay.style.position = 'fixed'; overlay.style.inset = '0';
-    overlay.style.background = 'rgba(0,0,0,0.12)'; overlay.style.zIndex = '1050';
-    overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; overlay.style.padding = '16px';
+    overlay.id = '__confirmOverlay';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0,0,0,0.12)';
+    overlay.style.zIndex = '1050';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.padding = '16px';
 
+    // ダイアログ
     const dialog = document.createElement('div');
-    dialog.role = 'dialog'; dialog.style.background = '#212529'; dialog.style.color = '#fff';
-    dialog.style.borderRadius = '14px'; dialog.style.width = 'min(320px, 86vw)'; dialog.style.padding = '16px';
-    dialog.style.boxShadow = '0 12px 28px rgba(0,0,0,.22)'; dialog.style.transform = 'translateY(8px)'; dialog.style.opacity = '0';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', '__confirmTitle');
+    dialog.tabIndex = -1;
+    dialog.className = 'shadow-lg';
+    dialog.style.background = '#212529';
+    dialog.style.color = '#fff';
+    dialog.style.borderRadius = '14px';
+    dialog.style.width = 'min(320px, 86vw)';
+    dialog.style.padding = '16px';
+    dialog.style.boxShadow = '0 12px 28px rgba(0,0,0,.22)';
+    dialog.style.zIndex = '1060';
+    dialog.style.outline = 'none';
+    dialog.style.transform = 'translateY(8px)';
+    dialog.style.opacity = '0';
     dialog.style.transition = 'opacity .14s ease, transform .14s ease';
 
-    const title = document.createElement('div'); title.textContent = 'このタスクを削除しますか？'; title.className = 'fw-semibold'; title.style.marginBottom = '12px';
+    // タイトル
+    const title = document.createElement('div');
+    title.id = '__confirmTitle';
+    title.className = 'fw-semibold';
+    title.style.fontSize = '0.98rem';
+    title.style.marginBottom = '12px';
+    title.textContent = 'このタスクを削除しますか？';
 
-    const row = document.createElement('div'); row.style.display = 'flex'; row.style.gap = '8px'; row.style.marginTop = '6px';
-    const btnCancel = document.createElement('button'); btnCancel.className = 'btn btn-light'; btnCancel.textContent = '取消'; btnCancel.style.flex = '1';
-    const btnDelete = document.createElement('button'); btnDelete.className = 'btn btn-danger'; btnDelete.textContent = '削除'; btnDelete.style.flex = '1';
+    // ボタン行
+    const btnRow = document.createElement('div');
+    btnRow.style.display = 'flex';
+    btnRow.style.gap = '8px';
+    btnRow.style.flexWrap = 'nowrap';
+    btnRow.style.marginTop = '6px';
 
-    row.append(btnCancel, btnDelete); dialog.append(title, row); overlay.appendChild(dialog); document.body.appendChild(overlay);
-    requestAnimationFrame(()=>{ dialog.style.opacity='1'; dialog.style.transform='translateY(0)'; });
+    const commonBtnStyle = (btn) => {
+      btn.style.borderRadius = '10px';
+      btn.style.padding = '10px';
+      btn.style.fontSize = '0.98rem';
+      btn.style.flex = '1 1 0';
+      btn.style.minWidth = '0';
+    };
 
-    function cleanup(result){
-      overlay.remove(); body.style.position = prev.position; body.style.top = prev.top; body.style.width = prev.width; body.style.overflow = prev.overflow; window.scrollTo(0, scrollY);
+    const btnDelete = document.createElement('button');
+    btnDelete.className = 'btn btn-danger';
+    btnDelete.type = 'button';
+    btnDelete.textContent = '削除';
+    commonBtnStyle(btnDelete);
+
+    const btnCancel = document.createElement('button');
+    btnCancel.className = 'btn btn-light';
+    btnCancel.type = 'button';
+    btnCancel.textContent = '取消';
+    commonBtnStyle(btnCancel);
+
+    btnRow.append(btnCancel, btnDelete); // 左=取消 / 右=削除
+    dialog.append(title, btnRow);
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+
+    // フェードイン
+    requestAnimationFrame(() => {
+      dialog.style.opacity = '1';
+      dialog.style.transform = 'translateY(0)';
+    });
+
+    // フォーカス制御
+    setTimeout(() => dialog.focus(), 0);
+    const focusables = [btnCancel, btnDelete];
+    const onKeydown = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); cleanup('cancel'); }
+      if (e.key === 'Enter')  { e.preventDefault(); cleanup('delete'); }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const idx = focusables.indexOf(document.activeElement);
+        const next = e.shiftKey ? (idx <= 0 ? focusables.length - 1 : idx - 1)
+                                : (idx >= focusables.length - 1 ? 0 : idx + 1);
+        focusables[next].focus();
+      }
+    };
+    dialog.addEventListener('keydown', onKeydown);
+
+    // 背景のスクロール抑止
+    const stopScroll = (e) => e.preventDefault();
+    overlay.addEventListener('wheel', stopScroll, { passive: false });
+    overlay.addEventListener('touchmove', stopScroll, { passive: false });
+
+    // 外側クリックで取消
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) cleanup('cancel');
+    });
+
+    function cleanup(result) {
+      dialog.removeEventListener('keydown', onKeydown);
+      overlay.removeEventListener('wheel', stopScroll);
+      overlay.removeEventListener('touchmove', stopScroll);
+      overlay.remove();
+
+      // 背景固定解除＆元位置
+      body.style.position = prevBodyStyle.position;
+      body.style.top = prevBodyStyle.top;
+      body.style.width = prevBodyStyle.width;
+      body.style.overflow = prevBodyStyle.overflow;
+      window.scrollTo(0, scrollY);
+
       resolve(result);
     }
-    btnCancel.onclick = ()=> cleanup('cancel');
-    btnDelete.onclick = ()=> cleanup('delete');
-    overlay.onclick = (e)=> { if (e.target === overlay) cleanup('cancel'); };
+
+    btnCancel.addEventListener('click', () => cleanup('cancel'));
+    btnDelete.addEventListener('click', () => cleanup('delete'));
   });
 }
+
+/**
+ * トーストで確認→「削除」選択時に Supabase 削除を実行
+ * 戻り値: Promise<boolean>  true=削除完了 / false=取り消し
+ */
 async function confirmAndDelete(id) {
   const action = await showDeleteToast();
   if (action !== 'delete') return false;
+
   try {
     const { error } = await supabase.from("タスクテーブル").delete().eq("id", id);
     if (error) throw error;
+    // PCとモバイル双方に反映
     fetchAndDisplayTasks();
     return true;
   } catch (e) {
@@ -358,6 +481,8 @@ async function confirmAndDelete(id) {
     return false;
   }
 }
+
+/* ===== PCボタンの削除もトースト確認に統一 ===== */
 async function deleteTask(id) {
   const ok = await confirmAndDelete(id);
   if (ok) fetchAndDisplayTasks();
@@ -390,6 +515,7 @@ window.sortTasks = function (column) {
   renderTasks();
   updateSortIndicators(currentSortColumn, currentSortDir);
 };
+
 function updateSortIndicators(column, dir) {
   const thStore = document.getElementById("thStore");
   const thItem  = document.getElementById("thItem");
@@ -436,6 +562,7 @@ export function parseCsvFile(file) {
     reader.readAsText(file);
   });
 }
+
 export async function insertDiagnostics(records) {
   if (!Array.isArray(records) || !records.length) return;
   const normalized = records.filter(r => r['店舗名'] && r['月'] && r['項目']);
@@ -468,10 +595,12 @@ function parseToISO(s) {
 }
 function isoToJPMonthDay(iso) { const [, mo, da] = iso.split('-'); return `${mo}月${da}日`; }
 function escapeHTML(s) { return String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
-function updateOverdueBadge(){}
+
+/* 期限超過バッジ（必要ならここで表示先へ反映） */
+function updateOverdueBadge(/*count*/) {}
 
 /* ======================================================================
-   ==================  ダッシュボード（仕様変更反映）  ==================
+   ==================  ダッシュボード（SPA統合）  =======================
    ====================================================================== */
 
 async function ensureChartJs() {
@@ -479,7 +608,8 @@ async function ensureChartJs() {
   await new Promise((resolve, reject) => {
     const s = document.createElement('script');
     s.src = "https://cdn.jsdelivr.net/npm/chart.js";
-    s.onload = resolve; s.onerror = reject;
+    s.onload = resolve;
+    s.onerror = reject;
     document.head.appendChild(s);
   });
 }
@@ -487,8 +617,8 @@ async function ensureChartJs() {
 async function initDashboard() {
   await ensureChartJs();
 
-  // ダッシュボード内のDOM（スコープを#dashboardSectionに限定）
-  const $ = (sel) => dashboardSection.querySelector(sel);
+  // ダッシュボード内のDOMを取得（dashboardSection 配下）
+  const $ = (id) => dashboardSection.querySelector(id);
 
   const storeSelectDash = $("#store-select");
   const chartStoreSelect = $("#chart-store-select");
@@ -497,45 +627,26 @@ async function initDashboard() {
   const toggleYoy = $("#toggle-yoy");
   const rankTableBody = $("#score-ranking-table tbody");
 
-  // 数値編集モーダル
-  const mEdit = $("#edit-modal");
-  const editTitleStore = $("#edit-title-store");
-  const editTitleSub = $("#edit-title-sub");
-  const editStore = $("#edit-store");
-  const editMonth = $("#edit-month");
-  const editItem = $("#edit-item");
-  const editTarget = $("#edit-target");
-  const editActual = $("#edit-actual");
-  const btnCancel = $("#btn-cancel");
-  const btnSave = $("#btn-save");
-  const editClose = $("#edit-close");
+  // ===== 仮説・ネクスト & タスク送信用DOM =====
+  const modal = $("#hypo-modal");
+  const modalClose = $("#hypo-close");
+  const titleStore = $("#hypo-title-store");
+  const titleSub = $("#hypo-title-sub");
+  const inputId = $("#hypo-id");
+  const inputStore = $("#hypo-store");
+  const inputMonth = $("#hypo-month");
+  const inputItem = $("#hypo-item");
+  const textareaHypo = $("#hypo-text");
+  const textareaNext = $("#next-text");
+  const btnSave = $("#hypo-save");
 
-  // 詳細（仮説/ネクスト & タスク）
-  const mDetail = $("#detail-modal");
-  const dId = $("#detail-id");
-  const dTitleStore = $("#detail-title-store");
-  const dTitleSub = $("#detail-title-sub");
-  const dStore = $("#detail-store");
-  const dMonth = $("#detail-month");
-  const dItem = $("#detail-item");
-  const dHypo = $("#detail-hypo");
-  const dNext = $("#detail-next");
-  const dSave = $("#btn-detail-save");
-  const dSend = $("#btn-detail-send");
-  const dClose = $("#detail-close");
-  const tItem = $("#task-item");
-  const tDetail = $("#task-detail");
-  const tDue = $("#task-due");
-  const tOwner = $("#task-owner");
+  // ▼ タスク送信用
+  const taskDetailInput = $("#hypo-task-detail");
+  const taskDueInput = $("#hypo-task-due");
+  const taskOwnerInput = $("#hypo-task-owner");
+  const btnTaskSend = $("#hypo-task-send");
 
-  // KPI定義
-  const percentItems = new Set(['F', 'D', '人件費', '店舗MTG参加率', '面談進捗']);
-  const yenItems = new Set(['売上', '単価', '人時売上高']);
-  const unitMap = {
-    '売上': '円', '単価': '円', '人時売上高': '円',
-    'F': '%', 'D': '%', '人件費': '%', '店舗MTG参加率': '%', '面談進捗': '%',
-    '臨店シート': '', 'CSアンケート': '点', 'PAリファラル採用': '名', '点数': '点'
-  };
+  // KPIカードIDと項目対応
   const kpiList = [
     { id: 'kpi-sales', item: '売上' },
     { id: 'kpi-unitprice', item: '単価' },
@@ -551,19 +662,30 @@ async function initDashboard() {
     { id: 'kpi-score', item: '点数' },
   ];
 
-  // Charts
+  const percentItems = new Set(['F', 'D', '人件費', '店舗MTG参加率', '面談進捗']);
+  const yenItems = new Set(['売上', '単価', '人時売上高']);
+  const unitMap = {
+    '売上': '円', '単価': '円', '人時売上高': '円',
+    'F': '%', 'D': '%', '人件費': '%', '店舗MTG参加率': '%', '面談進捗': '%',
+    '臨店シート': '', 'CSアンケート': '点', 'PAリファラル採用': '名', '点数': '点'
+  };
+
+  // チャートコンテキスト
   const ctxSales = $("#salesChart")?.getContext("2d");
   const ctxUnit = $("#unitPriceChart")?.getContext("2d");
   const ctxLabour = $("#labourSalesChart")?.getContext("2d");
 
-  // Utils
+  // Utils（ダッシュボード用）
   const toYYYYMM = (d) => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`;
   const labelYYYYMM = (yyyymm) => `${yyyymm.slice(0, 4)}/${yyyymm.slice(4, 6)}`;
   const formatYen = (v) => '¥ ' + Number(v ?? 0).toLocaleString();
   const currentFYStartYear = (() => { const t = new Date(), y = t.getFullYear(), m = t.getMonth() + 1; return (m >= 4) ? y : (y - 1); })();
-  const getFiscalMonths = (fyStartYear) => { const arr = []; for (let i = 0; i < 12; i++) arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); return arr; };
 
-  // 店舗＆期
+  function getFiscalMonths(fyStartYear) {
+    const arr = []; for (let i = 0; i < 12; i++) { arr.push(toYYYYMM(new Date(fyStartYear, 3 + i, 1))); } return arr;
+  }
+
+  // 店舗一覧
   async function getUniqueStores() {
     const { data, error } = await supabase.from("店舗診断表").select("店舗名").order("店舗名", { ascending: true });
     if (error) { console.error("店舗名取得エラー:", error); return []; }
@@ -596,6 +718,7 @@ async function initDashboard() {
     const map = {}; (data || []).forEach(r => { map[String(r.月)] = { target: r.目標数値 != null ? Number(r.目標数値) : null, actual: r.実績 != null ? Number(r.実績) : null }; });
     return map;
   }
+
   function calcYoYPercent(currActualArr, prevActualArr) {
     return currActualArr.map((v, i) => {
       const p = prevActualArr[i];
@@ -603,6 +726,7 @@ async function initDashboard() {
       return (v / p - 1) * 100;
     });
   }
+
   function renderChart(ctx, labels, targetArr, actualArr, yoyPercentArr, title, unit, showYoY, existingChartRef) {
     if (!ctx) return null;
     if (existingChartRef) existingChartRef.destroy();
@@ -627,7 +751,7 @@ async function initDashboard() {
                 const name = c.dataset.label || '', val = c.raw;
                 if (name.includes('昨対比')) return `${name}: ${val == null ? '-' : val.toFixed(1)}%`;
                 if (unit === 'yen') return `${name}: ${val == null ? '-' : formatYen(val)}`;
-                return `${name}: ${val == null ? '-' : Number(val).toLocaleString()}`;
+                return `${name}: ${val == null ? '-' : Number(val).toLocaleString()}`
               }
             }
           }
@@ -640,6 +764,7 @@ async function initDashboard() {
       }
     });
   }
+
   async function renderAllCharts() {
     const store = chartStoreSelect.value || storeSelectDash.value;
     const fy = Number(fiscalYearSelect.value); if (!store || !fy) return;
@@ -747,7 +872,7 @@ async function initDashboard() {
     }
 
     for (const { id, item } of kpiList) {
-      const card = $("#"+id); if (!card) continue;
+      const card = dashboardSection.querySelector(`#${id}`); if (!card) continue;
       const valueEl = card.querySelector('.value');
       const trendEl = card.querySelector('.trend');
       const iconEl = card.querySelector('.icon');
@@ -798,11 +923,6 @@ async function initDashboard() {
         targetBadge.textContent = target != null ? `目標：${Number(target).toLocaleString()}${unitMap[item] || ''}` : '目標：--';
       }
 
-      if (item !== '点数' && mini) {
-        const s = binaryScore(item, target, current);
-        mini.textContent = `${s}点`;
-      }
-
       const prev = await fetchPrevValue(store, month, item);
       if (item !== '点数' && prev !== null && current != null) {
         const diff = current - prev;
@@ -828,121 +948,99 @@ async function initDashboard() {
     const rec = data.find(r => r.項目 === item); return rec ? Number(rec.実績) : null;
   }
 
-  // ---- 詳細（仮説／ネクスト & タスク） ----
-  function openDetailModal(item) {
-    if (item === '点数') return;
+  // ====== 仮説／ネクスト編集モーダル ======
+  async function openHypoModal(item) {
     const store = storeSelectDash.value;
-    const monthRaw = (targetDateInput.value || '').slice(0, 7).replace("-", "");
-    const monthLabel = `${monthRaw.slice(0, 4)}/${monthRaw.slice(4, 6)}`;
+    const monthStr = (targetDateInput.value || '').slice(0,7).replace('-', '');
+    if (!store || !monthStr) { alert('店舗と日付を選択してください。'); return; }
 
-    dTitleStore.textContent = store;
-    dTitleSub.textContent = `${monthLabel} / ${item}`;
-    dStore.value = store; dMonth.value = monthRaw; dItem.value = item; tItem.value = item;
-    tDetail.value = ''; tDue.value = ''; tOwner.value = '';
+    const { data, error } = await supabase
+      .from('店舗診断表')
+      .select('id, 仮説, ネクストアクション')
+      .eq('店舗名', store)
+      .eq('月', monthStr)
+      .eq('項目', item)
+      .order('id', { ascending: false })
+      .limit(1);
 
-    findOrCreateDiagnostic(store, monthRaw, item).then(row => {
-      if (row) {
-        dId.value = row.id;
-        dHypo.value = row.仮説 ?? '';
-        dNext.value = row.ネクストアクション ?? '';
-      }
-      mDetail.hidden = false;
-    }).catch(err => { console.error(err); alert('データ取得に失敗しました'); });
+    if (error) { console.error(error); alert('レコード取得に失敗しました'); return; }
+    if (!data?.length) { alert('該当レコードが見つかりません（CSV取り込み済みか確認）'); return; }
+
+    const row = data[0];
+
+    titleStore.textContent = store;
+    titleSub.textContent = `${monthStr.slice(0,4)}/${monthStr.slice(4,6)}・${item}`;
+    inputId.value = row.id;
+    inputStore.value = store;
+    inputMonth.value = monthStr;
+    inputItem.value = item;
+    textareaHypo.value = row.仮説 || '';
+    textareaNext.value = row.ネクストアクション || '';
+
+    // タスク欄は毎回クリア
+    taskDetailInput.value = '';
+    taskDueInput.value = '';
+    taskOwnerInput.value = '';
+
+    modal.removeAttribute('hidden');
   }
-  async function findOrCreateDiagnostic(store, month, item) {
-    let { data, error } = await supabase
-      .from('店舗診断表')
-      .select('id, 仮説, ネクストアクション').eq('店舗名', store).eq('月', month).eq('項目', item).limit(1);
-    if (error) throw error;
-    if (data && data.length) return data[0];
-    const { error: upErr } = await supabase
-      .from('店舗診断表')
-      .upsert([{ 店舗名: store, 月: month, 項目: item }], { onConflict: '店舗名,月,項目' });
-    if (upErr) throw upErr;
-    const res = await supabase
-      .from('店舗診断表')
-      .select('id, 仮説, ネクストアクション').eq('店舗名', store).eq('月', month).eq('項目', item).limit(1);
-    if (res.error) throw res.error;
-    return (res.data && res.data[0]) ? res.data[0] : null;
-  }
-  function closeDetail() { mDetail.hidden = true; }
-  dClose?.addEventListener('click', closeDetail);
-  mDetail?.addEventListener('click', (e) => { if (e.target === mDetail) closeDetail(); });
 
-  dSave?.addEventListener('click', async () => {
-    const id = dId.value;
-    if (!id) { alert('ID取得に失敗しました'); return; }
-    const { error } = await supabase
-      .from('店舗診断表')
-      .update({ 仮説: dHypo.value, ネクストアクション: dNext.value })
-      .eq('id', id);
-    if (error) { alert('保存に失敗しました'); return; }
-    alert('仮説・ネクストアクションを保存しました');
-    closeDetail();
-  });
+  // モーダル操作
+  modalClose?.addEventListener('click', () => modal.setAttribute('hidden', ''));
+  modal?.addEventListener('click', (e) => { if (e.target === modal) modal.setAttribute('hidden', ''); });
 
-  dSend?.addEventListener('click', async () => {
-    const diagId = dId.value;
-    const item = tItem.value;
-    const detail = tDetail.value.trim();
-    const due = tDue.value || null;
-    const owner = tOwner.value || null;
-    if (!diagId) { alert('診断表IDがありません'); return; }
-    if (!item || !detail) { alert('「項目」「タスク」は必須です'); return; }
-    const { error } = await supabase
-      .from('タスクテーブル')
-      .insert([{ 店舗診断表_id: diagId, 項目: item, タスク: detail, 期限: due, 責任者: owner }]);
-    if (error) { alert('タスク送信に失敗しました'); return; }
-    alert('タスクを送信しました');
-    tDetail.value = ''; tDue.value = ''; tOwner.value = '';
-  });
-
-  // ---- 数値編集（✎） ----
-  function openEditModal(item, e) {
-    if (e) e.stopPropagation();
-    const store = storeSelectDash.value;
-    const monthRaw = (targetDateInput.value || '').slice(0, 7).replace("-", "");
-    const monthLabel = `${monthRaw.slice(0, 4)}/${monthRaw.slice(4, 6)}`;
-
-    editTitleStore.textContent = store;
-    editTitleSub.textContent = `${monthLabel} / ${item}`;
-    editStore.value = store; editMonth.value = monthRaw; editItem.value = item;
-    editTarget.value = ''; editActual.value = ''; mEdit.hidden = false;
-
-    supabase.from('店舗診断表')
-      .select('目標数値,実績').eq('店舗名', store).eq('月', monthRaw).eq('項目', item).limit(1)
-      .then(({ data, error }) => {
-        if (!error && data && data[0]) {
-          if (data[0].目標数値 != null) editTarget.value = Number(data[0].目標数値);
-          if (data[0].実績 != null) editActual.value = Number(data[0].実績);
-        }
-      });
-  }
-  function closeEditModal() { mEdit.hidden = true; }
-  btnCancel?.addEventListener('click', closeEditModal);
-  editClose?.addEventListener('click', closeEditModal);
-  mEdit?.addEventListener('click', (e) => { if (e.target === mEdit) closeEditModal(); });
-
+  // 仮説・ネクスト保存
   btnSave?.addEventListener('click', async () => {
-    const store = editStore.value, month = editMonth.value, item = editItem.value;
-    const target = editTarget.value.trim() === '' ? null : Number(editTarget.value);
-    const actual = editActual.value.trim() === '' ? null : Number(editActual.value);
-    const { error } = await supabase.from('店舗診断表')
-      .upsert([{ 店舗名: store, 月: month, 項目: item, 目標数値: target, 実績: actual }], { onConflict: '店舗名,月,項目' });
-    if (error) { console.error('保存エラー:', error); alert('保存に失敗しました'); return; }
-    closeEditModal();
-    await updateAllKPIs(storeSelectDash.value, targetDateInput.value);
-    await renderAllCharts();
+    const id = inputId.value;
+    const hypo = textareaHypo.value;
+    const next = textareaNext.value;
+    if (!id) return alert('IDが見つかりません。');
+
+    const { error } = await supabase
+      .from('店舗診断表')
+      .update({ 仮説: hypo, ネクストアクション: next })
+      .eq('id', id);
+
+    if (error) { alert('保存に失敗しました: ' + error.message); return; }
+    alert('保存しました');
+    modal.setAttribute('hidden', '');
   });
 
-  // ✎ボタン設置 & カードクリック
-  function attachEditButtonsAndCardClicks() {
+  // ★ タスク送信
+  btnTaskSend?.addEventListener('click', async () => {
+    const diagId = inputId.value;
+    const item = inputItem.value;            // 現在のKPI項目を使用（隠し）
+    const detail = taskDetailInput.value.trim();
+    const due = taskDueInput.value;          // yyyy-mm-dd（任意）
+    const owner = taskOwnerInput.value.trim();
+
+    if (!diagId) return alert('診断表IDが取得できませんでした。');
+    if (!item || !detail) return alert('「項目」「タスク」は必須です');
+
+    const { error } = await supabase.from("タスクテーブル").insert([
+      { 項目: item, タスク: detail, 期限: due, 責任者: owner, 店舗診断表_id: diagId }
+    ]);
+
+    if (error) { alert("タスク追加エラー: " + error.message); return; }
+    alert("タスクを追加しました");
+    taskDetailInput.value = ""; taskDueInput.value = ""; taskOwnerInput.value = "";
+    if (typeof fetchAndDisplayTasks === 'function') fetchAndDisplayTasks();
+  });
+
+  // 鉛筆ボタン設置（クリックでopenHypoModal）
+  function attachEditButtons() {
     kpiList.forEach(({ id, item }) => {
-      const card = $("#"+id); if (!card) return;
-      if (item !== '点数') { card.addEventListener('click', () => openDetailModal(item)); }
+      const card = dashboardSection.querySelector(`#${id}`);
+      if (!card) return;
       if (!card.querySelector('.edit-btn')) {
-        const btn = document.createElement('button'); btn.className = 'edit-btn'; btn.title = `${item}を編集`; btn.innerText = '✎';
-        btn.addEventListener('click', (e) => openEditModal(item, e));
+        const btn = document.createElement('button');
+        btn.className = 'edit-btn';
+        btn.title = `${item} の仮説／ネクスト・タスク送信`;
+        btn.innerText = '✎';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openHypoModal(item);
+        });
         card.appendChild(btn);
       }
     });
@@ -953,7 +1051,7 @@ async function initDashboard() {
   await populateStoreSelects();
   chartStoreSelect.value = storeSelectDash.value;
   await populateFiscalYears(storeSelectDash.value);
-  attachEditButtonsAndCardClicks();
+  attachEditButtons();
   await updateAllKPIs(storeSelectDash.value, targetDateInput.value);
   await renderAllCharts();
 
@@ -963,35 +1061,4 @@ async function initDashboard() {
   chartStoreSelect.addEventListener("change", async (e) => { await populateFiscalYears(e.target.value); await renderAllCharts(); });
   fiscalYearSelect.addEventListener("change", renderAllCharts);
   toggleYoy.addEventListener("change", renderAllCharts);
-}
-
-/* 期限超過バッジ（App Badge + 画面バッジ） */
-async function updateOverdueBadge(countFromList) {
-  // ① 今ある描画結果から渡された数を使う（未指定なら全体を集計）
-  let n = typeof countFromList === 'number' ? countFromList : await computeOverdueCountAll();
-
-  // ② 画面内の任意のバッジ要素（あれば更新）
-  const el = document.getElementById('overdueBadge');
-  if (el) {
-    el.textContent = n > 99 ? '99+' : String(n);
-    el.hidden = n === 0;
-  }
-
-  // ③ PWAアイコンのバッジ（Chromium系）
-  if ('setAppBadge' in navigator) {
-    try {
-      n > 0 ? await navigator.setAppBadge(n) : await navigator.clearAppBadge();
-    } catch (_) { /* noop */ }
-  }
-}
-
-// DBに boolean の「完了」列がある場合は `.eq('完了', false)` を足してください
-async function computeOverdueCountAll() {
-  const todayISO = new Date().toISOString().slice(0,10); // YYYY-MM-DD (0時基準)
-  const { count, error } = await supabase
-    .from('タスクテーブル')
-    .select('id', { count: 'exact', head: true })
-    .lt('期限', todayISO);
-  if (error) { console.error('期限切れ数集計エラー:', error); return 0; }
-  return count || 0;
 }
