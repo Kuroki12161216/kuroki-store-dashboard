@@ -1,0 +1,23 @@
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">
+  <button onclick="updateOverdueBadge(0)">count=0</button>
+  <button onclick="updateOverdueBadge(1)">count=1</button>
+  <button onclick="updateOverdueBadge(3)">count=3</button>
+  <button onclick="forceIncreased()">強制: 増えた扱い</button>
+  <button onclick="forceQuietOver()">強制: 2時間経過扱い</button>
+  <button onclick="resetBadgeState()">状態リセット</button>
+  <button id="ask-noti">通知を許可</button>
+</div>
+<script src="script.js"></script>
+
+<script>
+const LS_KEY_LAST_COUNT='overdueBadge:lastCount';
+const LS_KEY_LAST_NOTIFY='overdueBadge:lastNotifyAt';
+document.getElementById('ask-noti')?.addEventListener('click', async () => {
+  if(!('Notification'in window)) return alert('通知API非対応');
+  const perm = await Notification.requestPermission();
+  alert('Notification: '+perm);
+});
+function forceIncreased(){ localStorage.setItem(LS_KEY_LAST_COUNT,'0'); alert('lastCount=0 にしました'); }
+function forceQuietOver(){ localStorage.setItem(LS_KEY_LAST_NOTIFY, String(Date.now()-3*60*60*1000)); alert('lastNotifyAtを3時間前に'); }
+function resetBadgeState(){ localStorage.removeItem(LS_KEY_LAST_COUNT); localStorage.removeItem(LS_KEY_LAST_NOTIFY); alert('LS初期化'); }
+</script>
