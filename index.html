@@ -603,6 +603,63 @@
         border-radius: 0
       }
     }
+
+    /* 臨店（Inspection）もタスクと同じく、モバイルはlist、PCはtable表示に切替 */
+    @media (max-width: 767.98px) {
+      #inspectionsTableWrapper {
+        display: none !important;
+      }
+
+      #inspectionsListMobileWrapper {
+        display: block !important;
+      }
+    }
+
+    @media (min-width: 768px) {
+      #inspectionsTableWrapper {
+        display: block !important;
+      }
+
+      #inspectionsListMobileWrapper {
+        display: none !important;
+      }
+    }
+
+    /* モバイルカード内の小さなバッジ／行レイアウト（流用用の軽い補助） */
+    .insp-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #f0f3ff;
+      color: #2b3a67;
+    }
+
+    .insp-badge-judge-ok {
+      background: #e7f9ef;
+      color: #198754;
+    }
+
+    .insp-badge-judge-ng {
+      background: #fde7ea;
+      color: #dc3545;
+    }
+
+    .insp-line {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .insp-muted {
+      color: #667085;
+      font-size: 12px;
+    }
+
+    .insp-link {
+      text-decoration: none;
+    }
   </style>
 </head>
 
