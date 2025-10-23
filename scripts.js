@@ -1305,9 +1305,9 @@ const inspectionsTableBody = document.querySelector("#inspectionsTable tbody");
 const inspectionsListMobile = document.getElementById("inspectionsListMobile");
 
 /* ▼ 追加：月/カテゴリー/判定 のセレクト */
-const inspMonthSelect  = document.getElementById("inspMonthSelect");
-const inspCatSelect    = document.getElementById("inspCatSelect");
-const inspJudgeSelect  = document.getElementById("inspJudgeSelect");
+const inspMonthSelect  = document.getElementById("monthSelectInspection");
+const inspCatSelect    = document.getElementById("categorySelectInspection");
+const inspJudgeSelect  = document.getElementById("judgeSelectInspection");
 
 /* --- 状態 --- */
 let inspectionsDataGlobal = [];
