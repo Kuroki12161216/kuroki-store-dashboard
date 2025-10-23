@@ -943,13 +943,27 @@
             <!-- フィルタ -->
             <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
               <div>
-                <label for="storeSelectInspection" class="form-label me-2 mb-0">店舗選択:</label>
+                <label for="storeSelectInspection" class="form-label me-2 mb-0">店舗名:</label>
                 <select id="storeSelectInspection" class="form-select d-inline-block w-auto"></select>
               </div>
+              <div>
+                <label for="monthSelectInspection" class="form-label me-2 mb-0">月:</label>
+                <select id="monthSelectInspection" class="form-select d-inline-block w-auto"></select>
+              </div>
+              <div>
+                <label for="categorySelectInspection" class="form-label me-2 mb-0">カテゴリー:</label>
+                <select id="categorySelectInspection" class="form-select d-inline-block w-auto"></select>
+              </div>
+              <div>
+                <label for="judgeSelectInspection" class="form-label me-2 mb-0">判定:</label>
+                <select id="judgeSelectInspection" class="form-select d-inline-block w-auto"></select>
+              </div>
+
               <button id="refreshInspectionsBtn" class="btn btn-outline-secondary" onclick="refreshInspections?.()">
                 <i class="bi bi-arrow-repeat me-1"></i>最新表示
               </button>
             </div>
+
 
             <!-- PC: テーブル -->
             <div id="inspectionsTableWrapper" class="table-responsive">
@@ -963,7 +977,6 @@
                     <th id="thInspJudge" class="sort-header" onclick="sortInspections('判定値')">判定</th>
                     <th id="thInspNote" class="sort-header" onclick="sortInspections('特記事項値')">特記事項</th>
                     <th id="thInspUrl" class="sort-header" onclick="sortInspections('URL値')">URL</th>
-                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody></tbody>

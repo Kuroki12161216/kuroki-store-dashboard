@@ -1298,26 +1298,38 @@ const INSPECTION_COLS = {
   // // もし臨店テーブルに「店舗名」が直であるなら、下記を実カラム名にして使えます（join不要）
   store_direct: "店舗",        // 例: "店舗名" に変えると直接使用。null の場合は join で取得。
 };
-
-/* --- DOM --- */
+/* --- DOM（臨店一覧） --- */
 const inspectionSection = document.getElementById("inspectionSection");
 const storeSelectInspection = document.getElementById("storeSelectInspection");
 const inspectionsTableBody = document.querySelector("#inspectionsTable tbody");
 const inspectionsListMobile = document.getElementById("inspectionsListMobile");
+
+/* ▼ 追加：月/カテゴリー/判定 のセレクト */
+const inspMonthSelect  = document.getElementById("inspMonthSelect");
+const inspCatSelect    = document.getElementById("inspCatSelect");
+const inspJudgeSelect  = document.getElementById("inspJudgeSelect");
 
 /* --- 状態 --- */
 let inspectionsDataGlobal = [];
 let currentInspSortColumn = null;
 let currentInspSortDir = "asc";
 
-/* --- 初期化：DOMContentLoaded の既存 init に1行追加すると自然 --- */
-/* 例：window.addEventListener("DOMContentLoaded", async () => { ... await initInspectionPage(); ... }) */
+/* ▼ 追加：フィルター状態 */
+const inspFilters = {
+  store: "all",
+  month: "all",      // DBの生値（例：yyyymm）で持つ
+  category: "all",
+  judge: "all",
+};
+
+
 window.initInspectionPage = async function () {
-  await initInspectionStoreDropdown();
+  await initInspectionFilters();     // ← ここで store, month, category, judge をまとめて初期化
   await fetchAndDisplayInspections();
   subscribeInspectionsRealtime();
-  window.refreshInspections = () => fetchAndDisplayInspections();
+  window.refreshInspections = () => fetchAndDisplayInspections(true);
 };
+
 
 /* --- 店舗セレクトを生成（診断表からユニーク抽出 or 直カラム） --- */
 async function initInspectionStoreDropdown() {
@@ -1346,11 +1358,10 @@ async function initInspectionStoreDropdown() {
   storeSelectInspection.addEventListener("change", fetchAndDisplayInspections);
 }
 
-/* --- データ取得：店舗でフィルタ（store_direct が無い場合は inner join） --- */
-async function fetchAndDisplayInspections() {
-  const selectedStore = storeSelectInspection.value || "all";
+async function fetchAndDisplayInspections(force = false) {
   const cols = INSPECTION_COLS;
 
+  // 取得カラム
   let selectClause = `id, ${cols.item}, ${cols.judge}, ${cols.note}, ${cols.url}, ${cols.month}, ${cols.category}`;
   if (cols.store_direct) {
     selectClause += `, ${cols.store_direct}`;
@@ -1360,12 +1371,25 @@ async function fetchAndDisplayInspections() {
 
   let query = supabase.from(INSPECTION_TABLE).select(selectClause);
 
-  if (selectedStore !== "all") {
+  // ▼ フィルタ：店舗名
+  if (inspFilters.store !== "all") {
     if (cols.store_direct) {
-      query = query.eq(cols.store_direct, selectedStore);
+      query = query.eq(cols.store_direct, inspFilters.store);
     } else {
-      query = query.eq("店舗診断表.店舗名", selectedStore);
+      query = query.eq("店舗診断表.店舗名", inspFilters.store);
     }
+  }
+  // ▼ フィルタ：月（DB生値）
+  if (inspFilters.month !== "all") {
+    query = query.eq(cols.month, inspFilters.month);
+  }
+  // ▼ フィルタ：カテゴリー
+  if (inspFilters.category !== "all") {
+    query = query.eq(cols.category, inspFilters.category);
+  }
+  // ▼ フィルタ：判定
+  if (inspFilters.judge !== "all") {
+    query = query.eq(cols.judge, inspFilters.judge);
   }
 
   const { data: result, error } = await query;
@@ -1432,13 +1456,8 @@ function renderInspections() {
       tdUrl.textContent = "—";
     }
     const tdOp = document.createElement("td");
-    const delBtn = document.createElement("button");
-    delBtn.textContent = "削除";
-    delBtn.className = "btn btn-danger btn-sm";
-    delBtn.onclick = () => deleteInspection(row.id);
-    tdOp.appendChild(delBtn);
 
-    tr.append(tdStore, tdMonth, tdCat, tdItem, tdJudge, tdNote, tdUrl, tdOp);
+    tr.append(tdStore, tdMonth, tdCat, tdItem, tdJudge, tdNote, tdUrl);
     inspectionsTableBody.appendChild(tr);
 
     // モバイル カード
@@ -1562,6 +1581,79 @@ window.showInspectionSection = function () {
     initInspectionPage(); // 初回のみ
   }
 };
+
+async function initInspectionFilters() {
+  // 1) 店舗名の選択肢
+  await initInspectionStoreDropdown();
+
+  // 2) 月・カテゴリー・判定の選択肢
+  const cols = INSPECTION_COLS;
+  let selectClause = `${cols.month}, ${cols.category}, ${cols.judge}`;
+  const { data, error } = await supabase.from(INSPECTION_TABLE).select(selectClause);
+  if (error) {
+    console.error("臨店フィルタ候補取得エラー:", error);
+    // 失敗時は最低限の「全件」だけ入れておく
+    initSelectAllOnly(inspMonthSelect, "全ての月");
+    initSelectAllOnly(inspCatSelect, "全てのカテゴリー");
+    initSelectAllOnly(inspJudgeSelect, "全ての判定");
+    return;
+  }
+
+  // 月（DB生値をvalue、ラベルはYYYY/MMに）
+  const monthsRaw = Array.from(
+    new Set((data || []).map(r => r[cols.month]).filter(Boolean).map(v => String(v)))
+  ).sort();
+  inspMonthSelect.innerHTML = "";
+  addOption(inspMonthSelect, "all", "全ての月");
+  monthsRaw.forEach(raw => addOption(inspMonthSelect, raw, normalizeMonth(raw)));
+
+  // カテゴリー
+  const cats = Array.from(
+    new Set((data || []).map(r => r[cols.category]).filter(Boolean).map(v => String(v)))
+  ).sort((a,b) => a.localeCompare(b, 'ja'));
+  inspCatSelect.innerHTML = "";
+  addOption(inspCatSelect, "all", "全てのカテゴリー");
+  cats.forEach(c => addOption(inspCatSelect, c, c));
+
+  // 判定
+  const judges = Array.from(
+    new Set((data || []).map(r => r[cols.judge]).filter(Boolean).map(v => String(v)))
+  ).sort((a,b) => a.localeCompare(b, 'ja'));
+  inspJudgeSelect.innerHTML = "";
+  addOption(inspJudgeSelect, "all", "全ての判定");
+  judges.forEach(j => addOption(inspJudgeSelect, j, j));
+
+  // 変更イベント
+  storeSelectInspection?.addEventListener("change", () => {
+    inspFilters.store = storeSelectInspection.value || "all";
+    fetchAndDisplayInspections(true);
+  });
+  inspMonthSelect?.addEventListener("change", () => {
+    inspFilters.month = inspMonthSelect.value || "all";
+    fetchAndDisplayInspections(true);
+  });
+  inspCatSelect?.addEventListener("change", () => {
+    inspFilters.category = inspCatSelect.value || "all";
+    fetchAndDisplayInspections(true);
+  });
+  inspJudgeSelect?.addEventListener("change", () => {
+    inspFilters.judge = inspJudgeSelect.value || "all";
+    fetchAndDisplayInspections(true);
+  });
+}
+
+function initSelectAllOnly(selectEl, allLabel) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+  addOption(selectEl, "all", allLabel);
+}
+function addOption(selectEl, value, label) {
+  const o = document.createElement("option");
+  o.value = value; o.textContent = label;
+  selectEl.appendChild(o);
+}
+
+
 
 // 外部（HTML）から呼べるように公開
 window.fetchAndDisplayTasks = fetchAndDisplayTasks;
