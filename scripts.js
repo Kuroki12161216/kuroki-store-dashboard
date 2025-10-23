@@ -1447,15 +1447,14 @@ function renderInspections() {
     const tdItem = document.createElement("td"); tdItem.textContent = row.項目値 || "";
     const tdJudge = document.createElement("td"); tdJudge.textContent = row.判定値 || "";
     const tdNote = document.createElement("td"); tdNote.textContent = row.特記事項値 || "";
+    // --- 置き換え後（複数URL/Driveサムネ対応） ---
     const tdUrl = document.createElement("td");
-    if (row.URL値) {
-      const a = document.createElement("a");
-      a.href = row.URL値; a.target = "_blank"; a.rel = "noopener"; a.textContent = "リンク";
-      tdUrl.appendChild(a);
+    const urls = _splitUrls(row.URL値);
+    if (urls.length) {
+      tdUrl.appendChild(buildUrlPreviewNode(urls));
     } else {
       tdUrl.textContent = "—";
     }
-    const tdOp = document.createElement("td");
 
     tr.append(tdStore, tdMonth, tdCat, tdItem, tdJudge, tdNote, tdUrl);
     inspectionsTableBody.appendChild(tr);
@@ -1652,6 +1651,126 @@ function addOption(selectEl, value, label) {
   o.value = value; o.textContent = label;
   selectEl.appendChild(o);
 }
+
+
+/* ===== 臨店一覧：URL 加工／サムネ生成ユーティリティ ===== */
+
+// カンマ・空白・改行で複数URLに対応
+function _splitUrls(s) {
+  return (s || "")
+    .split(/[\s,、\n\r]+/)
+    .map(u => u.trim())
+    .filter(Boolean);
+}
+
+// 画像拡張子なら true
+function _isImageUrl(u) {
+  return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(u);
+}
+
+// いろいろな Drive/Docs URLから ID を抽出
+function _extractDriveId(url) {
+  const patterns = [
+    /\/file\/d\/([a-zA-Z0-9_-]{10,})/,         // drive.google.com/file/d/ID
+    /\/document\/d\/([a-zA-Z0-9_-]{10,})/,     // docs.google.com/document/d/ID
+    /\/spreadsheets\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/spreadsheets/d/ID
+    /\/presentation\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/presentation/d/ID
+    /[?&]id=([a-zA-Z0-9_-]{10,})/              // open?id=ID
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+function _driveThumbUrl(id, size = 240) {
+  // 横幅px指定。表示が小さければ 160 などに変更
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
+}
+
+// Favicon用
+function _faviconUrl(u) {
+  try {
+    const { hostname } = new URL(u);
+    return `https://www.google.com/s2/favicons?sz=32&domain=${hostname}`;
+  } catch { return ""; }
+}
+
+/**
+ * URL配列から <div> を返す（表用）
+ * - Drive: サムネ（<img>）＋クリックで別タブ
+ * - 直リンク画像: 縮小サムネ
+ * - それ以外: favicon＋ホスト名リンク
+ */
+function buildUrlPreviewNode(urls) {
+  const wrap = document.createElement("div");
+  wrap.className = "insp-url-wrap d-flex flex-wrap gap-2";
+
+  urls.forEach(u => {
+    const id = _extractDriveId(u);
+    if (id) {
+      const a = document.createElement("a");
+      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.className = "insp-url-thumb-link";
+      const img = new Image();
+      img.loading = "lazy";
+      img.alt = "Driveプレビュー";
+      img.src = _driveThumbUrl(id, 200);
+      img.className = "insp-url-thumb";
+      // 非公開などでサムネ失敗時はアイコンリンクにフォールバック
+      img.onerror = () => {
+        a.innerHTML = `<img class="insp-favicon" src="${_faviconUrl(u)}" alt=""> <span class="small">${_escapeHtml(new URL(u).hostname)}</span>`;
+      };
+      a.appendChild(img);
+      wrap.appendChild(a);
+      return;
+    }
+
+    if (_isImageUrl(u)) {
+      const a = document.createElement("a");
+      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.className = "insp-url-thumb-link";
+      const img = new Image();
+      img.loading = "lazy";
+      img.alt = "画像プレビュー";
+      img.src = u;
+      img.className = "insp-url-thumb";
+      a.appendChild(img);
+      wrap.appendChild(a);
+      return;
+    }
+
+    // その他（PDF, 外部サイト等）
+    try {
+      const fav = _faviconUrl(u);
+      const { hostname } = new URL(u);
+      const a = document.createElement("a");
+      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.className = "insp-url-chip btn btn-sm btn-outline-secondary";
+      a.innerHTML = `${fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""} ${_escapeHtml(hostname)}`;
+      wrap.appendChild(a);
+    } catch {
+      const a = document.createElement("a");
+      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.textContent = "リンク";
+      wrap.appendChild(a);
+    }
+  });
+
+  return wrap;
+}
+
+/* ちょっとしたCSS（任意・目安） */
+(function addInspUrlStyles() {
+  const css = `
+    .insp-url-thumb { width: 160px; height: auto; border-radius: 8px; display:block; }
+    .insp-url-wrap .insp-url-thumb-link { display:inline-block; line-height:0; }
+    .insp-favicon { width: 16px; height:16px; vertical-align: -3px; margin-right: 4px; }
+    .insp-url-chip { display:inline-flex; align-items:center; gap:6px; }
+  `;
+  const s = document.createElement("style"); s.textContent = css;
+  document.head.appendChild(s);
+})();
 
 
 
