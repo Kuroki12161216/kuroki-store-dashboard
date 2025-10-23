@@ -1285,18 +1285,18 @@ async function deleteTask(id) {
 
 /* --- 設定：Supabase テーブル名とカラムのマッピング --- */
 /* 添付Excelの構成に合わせて、必要に応じて下記だけ変更してください。 */
-const INSPECTION_TABLE = "臨店テーブル";   // ← Supabase 側の臨店テーブル名に変更
+const INSPECTION_TABLE = "臨店一覧";   // ← Supabase 側の臨店テーブル名に変更
 const INSPECTION_COLS = {
   // 例：Excelが「月」「カテゴリ」「項目」「判定」「特記事項」「URL」「店舗診断表_id」で入ってくる想定
   month: "月",             // yyyymm / もしくは yyyy-mm
   category: "カテゴリ",     // 例：サービス/クリーンネス/料理 等
-  item: "項目",            // 点検項目名
+  item: "設問",            // 点検項目名
   judge: "判定",           // 〇/× など
   note: "特記事項",        // テキスト
-  url: "URL",              // 写真や資料のURL
-  diag_fk: "店舗診断表_id", // 店舗診断表の外部キー（なければ null 想定）
-  // もし臨店テーブルに「店舗名」が直であるなら、下記を実カラム名にして使えます（join不要）
-  store_direct: null       // 例: "店舗名" に変えると直接使用。null の場合は join で取得。
+  url: "url",              // 写真や資料のURL
+  // diag_fk: "店舗診断表_id", // 店舗診断表の外部キー（なければ null 想定）
+  // // もし臨店テーブルに「店舗名」が直であるなら、下記を実カラム名にして使えます（join不要）
+  store_direct: "店舗",        // 例: "店舗名" に変えると直接使用。null の場合は join で取得。
 };
 
 /* --- DOM --- */
