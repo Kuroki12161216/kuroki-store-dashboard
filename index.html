@@ -1025,6 +1025,16 @@
             <!-- PC: テーブル -->
             <div id="inspectionsTableWrapper" class="table-responsive">
               <table id="inspectionsTable" class="table table-bordered table-striped align-middle">
+                <!-- ▼ 追加：列幅指定 -->
+                <colgroup>
+                  <col style="width: 140px;"> <!-- 店舗 -->
+                  <col style="width: 90px;"> <!-- 月 -->
+                  <col style="width: 140px;"> <!-- カテゴリ -->
+                  <col style="width: 32%;"> <!-- 項目（可読性のため広め） -->
+                  <col style="width: 90px;"> <!-- 判定 -->
+                  <col style="width: 26%;"> <!-- 特記事項 -->
+                  <col style="width: 180px;"> <!-- URL（サムネ/チップ） -->
+                </colgroup>
                 <thead class="table-light">
                   <tr>
                     <th id="thInspStore" class="sort-header" onclick="sortInspections('店舗名')">店舗</th>

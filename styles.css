@@ -193,3 +193,35 @@ th.sort-header:not(.table-light) { background: var(--primary-100)!important; }
     box-shadow: none;
   }
 }
+
+/* ===== 臨店一覧：列の視認性とトランケート（PC） ===== */
+#inspectionsTable {
+  table-layout: fixed; /* colgroupの幅を効かせる */
+}
+
+#inspectionsTable th,
+#inspectionsTable td {
+  vertical-align: top;
+}
+
+/* 1行省略（店舗名用） */
+.truncate-1 {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 2行まで表示（項目・特記事項用） */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2; /* 2行で省略 */
+  overflow: hidden;
+  line-height: 1.4;
+  max-height: calc(1.4em * 2);
+}
+
+/* URLセル内のサムネやチップが折り返しても整うように少し間隔を確保 */
+#inspectionsTable td:last-child .insp-url-wrap {
+  gap: 6px;
+}

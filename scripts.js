@@ -1305,9 +1305,9 @@ const inspectionsTableBody = document.querySelector("#inspectionsTable tbody");
 const inspectionsListMobile = document.getElementById("inspectionsListMobile");
 
 /* ▼ 追加：月/カテゴリー/判定 のセレクト */
-const inspMonthSelect  = document.getElementById("monthSelectInspection");
-const inspCatSelect    = document.getElementById("categorySelectInspection");
-const inspJudgeSelect  = document.getElementById("judgeSelectInspection");
+const inspMonthSelect = document.getElementById("monthSelectInspection");
+const inspCatSelect = document.getElementById("categorySelectInspection");
+const inspJudgeSelect = document.getElementById("judgeSelectInspection");
 
 /* --- 状態 --- */
 let inspectionsDataGlobal = [];
@@ -1441,13 +1441,37 @@ function renderInspections() {
     const tr = document.createElement("tr");
     tr.dataset.inspId = row.id;
 
-    const tdStore = document.createElement("td"); tdStore.textContent = row.店舗名 || "";
-    const tdMonth = document.createElement("td"); tdMonth.textContent = row.月値 || "";
-    const tdCat = document.createElement("td"); tdCat.textContent = row.カテゴリ値 || "";
-    const tdItem = document.createElement("td"); tdItem.textContent = row.項目値 || "";
-    const tdJudge = document.createElement("td"); tdJudge.textContent = row.判定値 || "";
-    const tdNote = document.createElement("td"); tdNote.textContent = row.特記事項値 || "";
-    // --- 置き換え後（複数URL/Driveサムネ対応） ---
+    // 店舗（1行省略）
+    const tdStore = document.createElement("td");
+    tdStore.textContent = row.店舗名 || "";
+    tdStore.className = "truncate-1";
+    tdStore.title = row.店舗名 || "";
+
+    // 月
+    const tdMonth = document.createElement("td");
+    tdMonth.textContent = row.月値 || "";
+
+    // カテゴリ
+    const tdCat = document.createElement("td");
+    tdCat.textContent = row.カテゴリ値 || "";
+
+    // 項目（2行まで表示）
+    const tdItem = document.createElement("td");
+    tdItem.textContent = row.項目値 || "";
+    tdItem.className = "clamp-2";
+    tdItem.title = row.項目値 || "";
+
+    // 判定
+    const tdJudge = document.createElement("td");
+    tdJudge.textContent = row.判定値 || "";
+
+    // 特記事項（読みやすく2行まで、必要に応じて解除してください）
+    const tdNote = document.createElement("td");
+    tdNote.textContent = row.特記事項値 || "";
+    tdNote.className = "clamp-2";
+    tdNote.title = row.特記事項値 || "";
+
+    // URL（サムネ/チップは既存処理を活かす）
     const tdUrl = document.createElement("td");
     const urls = _splitUrls(row.URL値);
     if (urls.length) {
@@ -1459,38 +1483,35 @@ function renderInspections() {
     tr.append(tdStore, tdMonth, tdCat, tdItem, tdJudge, tdNote, tdUrl);
     inspectionsTableBody.appendChild(tr);
 
-    // モバイル カード
+    /* ここから下（モバイルlist-group生成）はそのまま */
     const li = document.createElement("div");
     li.className = "list-group-item p-0";
-
     const bg = document.createElement("div");
     bg.className = "lg-swipe-bg";
     bg.innerHTML = `<span class="fw-bold text-danger-emphasis"><i class="bi bi-trash3 me-1"></i></span>`;
-
     const fore = document.createElement("div");
     fore.className = "lg-swipe-fore p-3";
     fore.innerHTML = `
       <div class="d-flex justify-content-between align-items-start">
         <div class="pe-3">
           <div class="small text-muted mb-1">
-<span class="me-2"><i class="bi bi-shop"></i> ${_escapeHtml(row.店舗名 || "-")}</span>
-<span class="me-2"><i class="bi bi-calendar3"></i> ${_escapeHtml(row.月値 || "-")}</span>
-${row.カテゴリ値 ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(row.カテゴリ値)}</span>` : ""}
-<div class="fw-semibold text-truncate-2">${_escapeHtml(row.項目値 || "(項目未設定)")}</div>
-判定: ${_escapeHtml(row.判定値 || "-")}
-${row.特記事項値 ? `<div class="small mt-2">${_escapeHtml(row.特記事項値)}</div>` : ""}
-${row.URL値 ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener">資料リンク</a></div>` : ""}
+            <span class="me-2"><i class="bi bi-shop"></i> ${_escapeHtml(row.店舗名 || "-")}</span>
+            <span class="me-2"><i class="bi bi-calendar3"></i> ${_escapeHtml(row.月値 || "-")}</span>
+            ${row.カテゴリ値 ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(row.カテゴリ値)}</span>` : ""}
+          </div>
+          <div class="fw-semibold text-truncate-2">${_escapeHtml(row.項目値 || "(項目未設定)")}</div>
+          判定: ${_escapeHtml(row.判定値 || "-")}
+          ${row.特記事項値 ? `<div class="small mt-2">${_escapeHtml(row.特記事項値)}</div>` : ""}
+          ${row.URL値 ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener">資料リンク</a></div>` : ""}
         </div>
       </div>
     `;
-
     const wrap = document.createElement("div");
     wrap.className = "lg-swipe-wrap";
     wrap.append(bg, fore);
     li.appendChild(wrap);
     inspectionsListMobile.appendChild(li);
 
-    // 既存の addMobileSwipe / showDeleteToast を使う
     if (typeof addMobileSwipe === "function") {
       addMobileSwipe(li, fore, async () => await confirmAndDeleteInspection(row.id));
     }
@@ -1609,7 +1630,7 @@ async function initInspectionFilters() {
   // カテゴリー
   const cats = Array.from(
     new Set((data || []).map(r => r[cols.category]).filter(Boolean).map(v => String(v)))
-  ).sort((a,b) => a.localeCompare(b, 'ja'));
+  ).sort((a, b) => a.localeCompare(b, 'ja'));
   inspCatSelect.innerHTML = "";
   addOption(inspCatSelect, "all", "全てのカテゴリー");
   cats.forEach(c => addOption(inspCatSelect, c, c));
@@ -1617,7 +1638,7 @@ async function initInspectionFilters() {
   // 判定
   const judges = Array.from(
     new Set((data || []).map(r => r[cols.judge]).filter(Boolean).map(v => String(v)))
-  ).sort((a,b) => a.localeCompare(b, 'ja'));
+  ).sort((a, b) => a.localeCompare(b, 'ja'));
   inspJudgeSelect.innerHTML = "";
   addOption(inspJudgeSelect, "all", "全ての判定");
   judges.forEach(j => addOption(inspJudgeSelect, j, j));
