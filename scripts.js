@@ -1784,7 +1784,7 @@ function buildUrlPreviewNode(urls) {
 /* ちょっとしたCSS（任意・目安） */
 (function addInspUrlStyles() {
   const css = `
-    .insp-url-thumb { width: 160px; height: auto; border-radius: 8px; display:block; }
+    .insp-url-thumb { width: 80px; height: auto; border-radius: 8px; display:block; }
     .insp-url-wrap .insp-url-thumb-link { display:inline-block; line-height:0; }
     .insp-favicon { width: 16px; height:16px; vertical-align: -3px; margin-right: 4px; }
     .insp-url-chip { display:inline-flex; align-items:center; gap:6px; }
