@@ -1023,31 +1023,32 @@
 
 
             <!-- PC: テーブル -->
-            <div id="inspectionsTableWrapper" class="table-responsive">
-              <table id="inspectionsTable" class="table table-bordered table-striped align-middle">
-                <!-- ▼ 追加：列幅指定 -->
-                <colgroup>
-                  <col style="width: 210px;"> <!-- 店舗 -->
-                  <col style="width: 90px;"> <!-- 月 -->
-                  <col style="width: 70px;"> <!-- カテゴリ -->
-                  <col style="width: 330px;"> <!-- 項目（可読性のため広め） -->
-                  <col style="width: 70px;"> <!-- 判定 -->
-                  <col style="width: 210px;"> <!-- 特記事項 -->
-                  <col style="width: 80px\;"> <!-- URL（サムネ/チップ） -->
-                </colgroup>
-                <thead class="table-light">
-                  <tr>
-                    <th id="thInspStore" class="sort-header" onclick="sortInspections('店舗名')">店舗</th>
-                    <th id="thInspMonth" class="sort-header" onclick="sortInspections('月値')">月</th>
-                    <th id="thInspCat" class="sort-header" onclick="sortInspections('カテゴリ値')">カテゴリ</th>
-                    <th id="thInspItem" class="sort-header" onclick="sortInspections('項目値')">項目</th>
-                    <th id="thInspJudge" class="sort-header" onclick="sortInspections('判定値')">判定</th>
-                    <th id="thInspNote" class="sort-header" onclick="sortInspections('特記事項値')">特記事項</th>
-                    <th id="thInspUrl" class="sort-header" onclick="sortInspections('URL値')">URL</th>
-                  </tr>
-                </thead>
-                <tbody></tbody>
-              </table>
+            <div class="d-flex justify-content-center">
+              <div id="inspectionsTableWrapper" class="table-responsive">
+                <table id="inspectionsTable" class="table table-bordered table-striped align-middle w-auto mx-auto">
+                  <colgroup>
+                    <col style="width: 210px;"> <!-- 店舗 -->
+                    <col style="width: 90px;"> <!-- 月 -->
+                    <col style="width: 90;"> <!-- カテゴリ -->
+                    <col style="width: 470px;"> <!-- 項目（可読性のため広め） -->
+                    <col style="width: 70px;"> <!-- 判定 -->
+                    <col style="width: 260px;"> <!-- 特記事項 -->
+                    <col style="width: 80px;"> <!-- URL（サムネ/チップ）※バックスラッシュ削除 -->
+                  </colgroup>
+                  <thead class="table-light text-center">
+                    <tr>
+                      <th id="thInspStore" class="sort-header" onclick="sortInspections('店舗名')">店舗</th>
+                      <th id="thInspMonth" class="sort-header" onclick="sortInspections('月値')">月</th>
+                      <th id="thInspCat" class="sort-header" onclick="sortInspections('カテゴリ値')">カテゴリ</th>
+                      <th id="thInspItem" class="sort-header" onclick="sortInspections('項目値')">項目</th>
+                      <th id="thInspJudge" class="sort-header" onclick="sortInspections('判定値')">判定</th>
+                      <th id="thInspNote" class="sort-header" onclick="sortInspections('特記事項値')">特記事項</th>
+                      <th id="thInspUrl" class="sort-header" onclick="sortInspections('URL値')">URL</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
             </div>
 
             <!-- モバイル: list-group -->

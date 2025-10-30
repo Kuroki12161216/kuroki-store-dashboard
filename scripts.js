@@ -1464,6 +1464,7 @@ function renderInspections() {
     // 判定
     const tdJudge = document.createElement("td");
     tdJudge.textContent = row.判定値 || "";
+    tdJudge.className = "text-center";
 
     // 特記事項（読みやすく2行まで、必要に応じて解除してください）
     const tdNote = document.createElement("td");
