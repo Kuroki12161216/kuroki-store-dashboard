@@ -1492,26 +1492,30 @@ function renderInspections() {
     bg.innerHTML = `<span class="fw-bold text-danger-emphasis"><i class="bi bi-trash3 me-1"></i></span>`;
     const fore = document.createElement("div");
     fore.className = "lg-swipe-fore p-3";
+    const urlsArr = _splitUrls(row.URL値);
+    const thumbHtml = _buildMobileThumbHtml(urlsArr);
     fore.innerHTML = `
-      <div class="d-flex justify-content-between align-items-start">
-        <div class="pe-3">
-          <div class="small text-muted mb-1">
-            <span class="me-2"><i class="bi bi-shop"></i> ${_escapeHtml(row.店舗名 || "-")}</span>
-            <span class="me-2"><i class="bi bi-calendar3"></i> ${_escapeHtml(row.月値 || "-")}</span>
-            ${row.カテゴリ値 ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(row.カテゴリ値)}</span>` : ""}
-          </div>
-          <div class="fw-semibold text-truncate-2">${_escapeHtml(row.項目値 || "(項目未設定)")}</div>
-          判定: ${_escapeHtml(row.判定値 || "-")}
-          ${row.特記事項値 ? `<div class="small mt-2">${_escapeHtml(row.特記事項値)}</div>` : ""}
-          ${(() => {
-            const first = (row.URL値 || "").split(/[\s,、\n\r]+/).map(s=>s.trim()).filter(Boolean)[0];
-            if (first && _isImageUrl(first)) {
-              return `<div class="small mt-2"><a href="${_escapeHtml(first)}" class="insp-mobile-image-link">資料リンク</a></div>`;
-            }
-            return row.URL値 ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener">資料リンク</a></div>` : "";
-          })()}
-        </div>
+  <div class="d-flex justify-content-between align-items-start">
+    <div class="pe-3 flex-grow-1">
+      <div class="small text-muted mb-1">
+        <span class="me-2"><i class="bi bi-shop"></i> ${_escapeHtml(row.店舗名 || "-")}</span>
+        <span class="me-2"><i class="bi bi-calendar3"></i> ${_escapeHtml(row.月値 || "-")}</span>
+        ${row.カテゴリ値 ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(row.カテゴリ値)}</span>` : ""}
       </div>
+
+      <div class="fw-semibold text-truncate-2">${_escapeHtml(row.項目値 || "(項目未設定)")}</div>
+      判定: ${_escapeHtml(row.判定値 || "-")}
+      ${row.特記事項値 ? `<div class="small mt-2">${_escapeHtml(row.特記事項値)}</div>` : ""}
+
+      ${thumbHtml
+        ? `<div class="mt-2">${thumbHtml}</div>`
+        : (row.URL値
+          ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener" class="insp-mobile-link-fallback">資料リンク</a></div>`
+          : ``)
+      }
+    </div>
+      
+  </div>
     `;
     const wrap = document.createElement("div");
     wrap.className = "lg-swipe-wrap";
@@ -1523,15 +1527,35 @@ function renderInspections() {
       addMobileSwipe(li, fore, async () => await confirmAndDeleteInspection(row.id));
     }
     // モバイル：資料リンク（画像）のクリックを横取りしてモーダル
+    // モバイル：サムネ or フォールバックリンクのクリックでモーダル/新規タブ
     if (!window.__insp_mobile_modal_bound) {
       window.__insp_mobile_modal_bound = true;
       document.getElementById("inspectionsListMobile").addEventListener("click", (e) => {
-        const a = e.target.closest("a.insp-mobile-image-link");
-        if (!a) return;
-        e.preventDefault();
-        window.__openInspectionImageModal(a.getAttribute("href"), "画像プレビュー");
+        // ① サムネがある場合（候補URLをdata属性に持つ）
+        const thumb = e.target.closest("a.insp-mobile-thumb");
+        if (thumb) {
+          e.preventDefault();
+          try {
+            const raw = thumb.getAttribute("data-candidates") || "[]";
+            const candidates = JSON.parse(decodeURIComponent(raw));
+            window.__openInspectionImageModal(candidates, "画像プレビュー");
+          } catch {
+            // JSON壊れてたら最後の手としてhrefへ
+            const href = thumb.getAttribute("href");
+            if (href) window.open(href, "_blank", "noopener");
+          }
+          return;
+        }
+
+        // ② サムネが無い時のフォールバック（通常リンク）
+        const a = e.target.closest("a.insp-mobile-link-fallback");
+        if (a) {
+          // そのまま別タブでOK
+          return;
+        }
       });
     }
+
 
   });
 }
@@ -1835,7 +1859,35 @@ function buildUrlPreviewNode(urls) {
   return wrap;
 }
 
+// ▼ モバイル用：URL配列からサムネ<a>を1つ生成（Drive/直リンク画像のみ）
+function _buildMobileThumbHtml(urls) {
+  const first = (urls || []).map(s => s.trim()).filter(Boolean)[0];
+  if (!first) return "";
 
+  const id = _extractDriveId(first);
+  let thumbSrc = "", candidates = [];
+
+  if (id) {
+    // Drive系：一覧は軽量サムネ、モーダルは原寸→HDサムネ→元URLの順で試行
+    thumbSrc = _driveThumbUrl(id, 200);
+    candidates = [_driveDirectViewUrl(id), _driveThumbHdUrl(id), first];
+  } else if (_isImageUrl(first)) {
+    // 直リンク画像
+    thumbSrc = first;
+    candidates = [first];
+  } else {
+    return ""; // 画像系でなければサムネ無し
+  }
+
+  const candAttr = encodeURIComponent(JSON.stringify(candidates));
+  return `
+    <a href="${_escapeHtml(first)}"
+       class="insp-mobile-thumb"
+       data-candidates='${candAttr}'
+       aria-label="画像プレビュー">
+      <img src="${_escapeHtml(thumbSrc)}" alt="プレビュー" class="insp-url-thumb">
+    </a>`;
+}
 
 /* ちょっとしたCSS（任意・目安） */
 (function addInspUrlStyles() {
