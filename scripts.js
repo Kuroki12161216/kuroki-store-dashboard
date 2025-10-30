@@ -1503,7 +1503,13 @@ function renderInspections() {
           <div class="fw-semibold text-truncate-2">${_escapeHtml(row.項目値 || "(項目未設定)")}</div>
           判定: ${_escapeHtml(row.判定値 || "-")}
           ${row.特記事項値 ? `<div class="small mt-2">${_escapeHtml(row.特記事項値)}</div>` : ""}
-          ${row.URL値 ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener">資料リンク</a></div>` : ""}
+          ${(() => {
+            const first = (row.URL値 || "").split(/[\s,、\n\r]+/).map(s=>s.trim()).filter(Boolean)[0];
+            if (first && _isImageUrl(first)) {
+              return `<div class="small mt-2"><a href="${_escapeHtml(first)}" class="insp-mobile-image-link">資料リンク</a></div>`;
+            }
+            return row.URL値 ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener">資料リンク</a></div>` : "";
+          })()}
         </div>
       </div>
     `;
@@ -1516,6 +1522,17 @@ function renderInspections() {
     if (typeof addMobileSwipe === "function") {
       addMobileSwipe(li, fore, async () => await confirmAndDeleteInspection(row.id));
     }
+    // モバイル：資料リンク（画像）のクリックを横取りしてモーダル
+    if (!window.__insp_mobile_modal_bound) {
+      window.__insp_mobile_modal_bound = true;
+      document.getElementById("inspectionsListMobile").addEventListener("click", (e) => {
+        const a = e.target.closest("a.insp-mobile-image-link");
+        if (!a) return;
+        e.preventDefault();
+        window.__openInspectionImageModal(a.getAttribute("href"), "画像プレビュー");
+      });
+    }
+
   });
 }
 
@@ -1710,6 +1727,15 @@ function _driveThumbUrl(id, size = 240) {
   return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
 }
 
+function _driveDirectViewUrl(id) {
+  // 公開設定に依存。失敗時は次のサムネHDにフォールバック
+  return `https://drive.google.com/uc?export=view&id=${id}`;
+}
+function _driveThumbHdUrl(id) {
+  // 大きめサムネ（多くの場合こちらは表示されやすい）
+  return `https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
+}
+
 // Favicon用
 function _faviconUrl(u) {
   try {
@@ -1724,6 +1750,8 @@ function _faviconUrl(u) {
  * - 直リンク画像: 縮小サムネ
  * - それ以外: favicon＋ホスト名リンク
  */
+// 既存の buildUrlPreviewNode をまるごと置き換え
+// buildUrlPreviewNode をまるごと置換
 function buildUrlPreviewNode(urls) {
   const wrap = document.createElement("div");
   wrap.className = "insp-url-wrap d-flex flex-wrap gap-2";
@@ -1731,17 +1759,36 @@ function buildUrlPreviewNode(urls) {
   urls.forEach(u => {
     const id = _extractDriveId(u);
     if (id) {
+      // Drive: サムネ表示 / クリックで モーダル(原寸→サムネHD→元URL の順に試す)
       const a = document.createElement("a");
       a.href = u; a.target = "_blank"; a.rel = "noopener";
       a.className = "insp-url-thumb-link";
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        const candidates = [
+          _driveDirectViewUrl(id),  // 原寸（権限で失敗しがち）
+          _driveThumbHdUrl(id),     // HDサムネ（成功率高め）
+          u                         // 最後は元のDriveページを新規タブ
+        ];
+        window.__openInspectionImageModal(candidates, "Drive画像プレビュー");
+      });
+
       const img = new Image();
       img.loading = "lazy";
       img.alt = "Driveプレビュー";
       img.src = _driveThumbUrl(id, 200);
       img.className = "insp-url-thumb";
-      // 非公開などでサムネ失敗時はアイコンリンクにフォールバック
       img.onerror = () => {
-        a.innerHTML = `<img class="insp-favicon" src="${_faviconUrl(u)}" alt=""> <span class="small">${_escapeHtml(new URL(u).hostname)}</span>`;
+        // サムネ取得自体が失敗：通常リンク（faviconチップ）に変更
+        a.replaceChildren();
+        a.className = "insp-url-chip btn btn-sm btn-outline-secondary";
+        try {
+          const fav = _faviconUrl(u);
+          const { hostname } = new URL(u);
+          a.innerHTML = `${fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""} ${_escapeHtml(hostname)}`;
+        } catch {
+          a.textContent = "リンク";
+        }
       };
       a.appendChild(img);
       wrap.appendChild(a);
@@ -1749,9 +1796,15 @@ function buildUrlPreviewNode(urls) {
     }
 
     if (_isImageUrl(u)) {
+      // 直リンク画像：クリックでモーダル（失敗時は元URLを開く）
       const a = document.createElement("a");
       a.href = u; a.target = "_blank"; a.rel = "noopener";
       a.className = "insp-url-thumb-link";
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        window.__openInspectionImageModal([u], "画像プレビュー");
+      });
+
       const img = new Image();
       img.loading = "lazy";
       img.alt = "画像プレビュー";
@@ -1762,7 +1815,7 @@ function buildUrlPreviewNode(urls) {
       return;
     }
 
-    // その他（PDF, 外部サイト等）
+    // 画像以外：従来どおり外部タブで
     try {
       const fav = _faviconUrl(u);
       const { hostname } = new URL(u);
@@ -1781,6 +1834,8 @@ function buildUrlPreviewNode(urls) {
 
   return wrap;
 }
+
+
 
 /* ちょっとしたCSS（任意・目安） */
 (function addInspUrlStyles() {
@@ -1802,3 +1857,95 @@ window.addTaskFromList = addTaskFromList;
 window.sortTasks = sortTasks;
 window.deleteTask = deleteTask;
 window.refreshTasks = () => fetchAndDisplayTasks(true);
+
+/* ===== 画像モーダル（フォールバック付き） ===== */
+(function setupInspectionImageModal() {
+  function ensureModal() {
+    if (document.getElementById("inspImageModalOverlay")) return;
+
+    const overlay = document.createElement("div");
+    overlay.id = "inspImageModalOverlay";
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.style.cssText = `
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: none; align-items: center; justify-content: center;
+      z-index: 2000; padding: 4vmin;
+    `;
+
+    const frame = document.createElement("div");
+    frame.id = "inspImageModalFrame";
+    frame.style.cssText = `
+      position: relative; max-width: 92vw; max-height: 92vh;
+      box-shadow: 0 10px 30px rgba(0,0,0,.4);
+      border-radius: 12px; background: #000; padding: 0;
+    `;
+
+    const img = document.createElement("img");
+    img.id = "inspImageModalImg";
+    img.alt = "";
+    img.style.cssText = `
+      display: block; max-width: 92vw; max-height: 92vh;
+      width: auto; height: auto; object-fit: contain; border-radius: 12px;
+      cursor: zoom-out;
+    `;
+
+    const closeBtn = document.createElement("button");
+    closeBtn.type = "button";
+    closeBtn.title = "閉じる";
+    closeBtn.style.cssText = `
+      position:absolute; top:8px; right:8px; border:none; border-radius:999px;
+      width:36px; height:36px; background: rgba(0,0,0,.6); color:#fff; font-size:20px; line-height:36px; cursor:pointer;
+    `;
+    closeBtn.innerHTML = "&times;";
+
+    function hide() {
+      overlay.style.display = "none";
+      overlay.setAttribute("aria-hidden", "true");
+      img.src = "";
+      img.alt = "";
+      img.removeAttribute("data-candidates");
+      img.onerror = null;
+    }
+
+    closeBtn.addEventListener("click", hide);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) hide(); });
+    img.addEventListener("click", hide);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.style.display !== "none") hide();
+    });
+
+    frame.append(img, closeBtn);
+    overlay.appendChild(frame);
+    document.body.appendChild(overlay);
+  }
+
+  // 指定された候補URLを順に試す
+  function loadWithFallback(imgEl, urls, onFailLast) {
+    let i = 0;
+    const tryNext = () => {
+      if (i >= urls.length) { onFailLast?.(); return; }
+      const url = urls[i++];
+      imgEl.onerror = tryNext;
+      imgEl.src = url;
+    };
+    tryNext();
+  }
+
+  // 公開API：候補URL配列で開く
+  window.__openInspectionImageModal = function (candidates, altText = "") {
+    ensureModal();
+    const overlay = document.getElementById("inspImageModalOverlay");
+    const img = document.getElementById("inspImageModalImg");
+    img.alt = altText;
+    overlay.style.display = "flex";
+    overlay.setAttribute("aria-hidden", "false");
+
+    // ロード失敗が全てだった場合は、静かに閉じて元リンクを開く（最後の候補を使う）
+    loadWithFallback(img, candidates.filter(Boolean), () => {
+      overlay.style.display = "none";
+      overlay.setAttribute("aria-hidden", "true");
+      const last = candidates[candidates.length - 1];
+      if (last) window.open(last, "_blank", "noopener");
+    });
+  };
+})();
