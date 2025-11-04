@@ -959,7 +959,7 @@
             </div>
 
             <!-- フィルタ -->
-            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+            <div id="inspToolbar" class="insp-toolbar mb-3 d-flex flex-wrap align-items-center gap-2">
               <div>
                 <label for="storeSelectTask" class="form-label me-2 mb-0">店舗選択:</label>
                 <select id="storeSelectTask" class="form-select d-inline-block w-auto"
@@ -998,7 +998,10 @@
             <h1 class="mb-3">臨店一覧</h1>
 
             <!-- フィルタ -->
-            <div class="mb-3 d-flex flex-wrap align-items-center gap-2">
+            <!-- フィルタ（スクロール固定） -->
+            <div class="mb-3 d-flex flex-wrap align-items-center gap-2 sticky-top bg-white py-2 border rounded"
+              style="z-index:1020;">
+
               <div>
                 <label for="storeSelectInspection" class="form-label me-2 mb-0">店舗名:</label>
                 <select id="storeSelectInspection" class="form-select d-inline-block w-auto"></select>
@@ -1015,10 +1018,6 @@
                 <label for="judgeSelectInspection" class="form-label me-2 mb-0">判定:</label>
                 <select id="judgeSelectInspection" class="form-select d-inline-block w-auto"></select>
               </div>
-
-              <button id="refreshInspectionsBtn" class="btn btn-outline-secondary" onclick="refreshInspections?.()">
-                <i class="bi bi-arrow-repeat me-1"></i>最新表示
-              </button>
             </div>
 
 

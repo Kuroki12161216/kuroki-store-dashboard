@@ -1316,8 +1316,8 @@ let currentInspSortDir = "asc";
 
 /* ▼ 追加：フィルター状態 */
 const inspFilters = {
-  store: "all",
-  month: "all",      // DBの生値（例：yyyymm）で持つ
+  store: "",
+  month: "",      // DBの生値（例：yyyymm）で持つ
   category: "all",
   judge: "all",
 };
@@ -1345,9 +1345,6 @@ async function initInspectionStoreDropdown() {
 
   // 「全店舗」を先頭に
   storeSelectInspection.innerHTML = "";
-  const allOpt = document.createElement("option");
-  allOpt.value = "all"; allOpt.textContent = "全店舗";
-  storeSelectInspection.appendChild(allOpt);
 
   storeNames.forEach((name) => {
     const opt = document.createElement("option");
@@ -1355,7 +1352,15 @@ async function initInspectionStoreDropdown() {
     storeSelectInspection.appendChild(opt);
   });
 
-  storeSelectInspection.addEventListener("change", fetchAndDisplayInspections);
+  if (!inspFilters.store && storeNames.length) {
+    inspFilters.store = storeNames[0];
+    storeSelectInspection.value = storeNames[0];
+  }
+
+  storeSelectInspection.addEventListener("change", () => {
+    inspFilters.store = storeSelectInspection.value;
+    fetchAndDisplayInspections(true);
+  });
 }
 
 async function fetchAndDisplayInspections(force = false) {
@@ -1372,7 +1377,7 @@ async function fetchAndDisplayInspections(force = false) {
   let query = supabase.from(INSPECTION_TABLE).select(selectClause);
 
   // ▼ フィルタ：店舗名
-  if (inspFilters.store !== "all") {
+  if (inspFilters.store) {
     if (cols.store_direct) {
       query = query.eq(cols.store_direct, inspFilters.store);
     } else {
@@ -1380,7 +1385,7 @@ async function fetchAndDisplayInspections(force = false) {
     }
   }
   // ▼ フィルタ：月（DB生値）
-  if (inspFilters.month !== "all") {
+  if (inspFilters.month) {
     query = query.eq(cols.month, inspFilters.month);
   }
   // ▼ フィルタ：カテゴリー
@@ -1514,7 +1519,7 @@ function renderInspections() {
           : ``)
       }
     </div>
-      
+
   </div>
     `;
     const wrap = document.createElement("div");
@@ -1664,10 +1669,18 @@ async function initInspectionFilters() {
   // 月（DB生値をvalue、ラベルはYYYY/MMに）
   const monthsRaw = Array.from(
     new Set((data || []).map(r => r[cols.month]).filter(Boolean).map(v => String(v)))
-  ).sort();
+  );
+  // ★ yyyymmキーで昇順 → 後ろが最新
+  monthsRaw.sort((a, b) => _monthToKey(a) - _monthToKey(b));
   inspMonthSelect.innerHTML = "";
-  addOption(inspMonthSelect, "all", "全ての月");
+  // ★ 「全ての月」は作らない
   monthsRaw.forEach(raw => addOption(inspMonthSelect, raw, normalizeMonth(raw)));
+  // ★ 初期値：最新月
+  const latestRaw = monthsRaw[monthsRaw.length - 1];
+  if (latestRaw) {
+    inspFilters.month = latestRaw;            // ← DB生値でフィルタ保持
+    inspMonthSelect.value = latestRaw;        // ← UIにも反映
+  }
 
   // カテゴリー
   const cats = Array.from(
@@ -1686,12 +1699,12 @@ async function initInspectionFilters() {
   judges.forEach(j => addOption(inspJudgeSelect, j, j));
 
   // 変更イベント
-  storeSelectInspection?.addEventListener("change", () => {
-    inspFilters.store = storeSelectInspection.value || "all";
-    fetchAndDisplayInspections(true);
-  });
+  // storeSelectInspection?.addEventListener("change", () => {
+  //   inspFilters.store = storeSelectInspection.value || "all";
+  //   fetchAndDisplayInspections(true);
+  // });
   inspMonthSelect?.addEventListener("change", () => {
-    inspFilters.month = inspMonthSelect.value || "all";
+    inspFilters.month = inspMonthSelect.value;
     fetchAndDisplayInspections(true);
   });
   inspCatSelect?.addEventListener("change", () => {
@@ -1702,6 +1715,20 @@ async function initInspectionFilters() {
     inspFilters.judge = inspJudgeSelect.value || "all";
     fetchAndDisplayInspections(true);
   });
+}
+
+function _monthToKey(v) {
+  if (!v) return -1;
+  if (typeof v === "number") v = String(v);
+  if (/^\d{6}$/.test(v)) return Number(v); // yyyymm
+  if (/^\d{4}-\d{1,2}$/.test(v)) {
+    const [y, m] = v.split("-").map(Number);
+    return y * 100 + m;
+  }
+
+  const dt = new Date(v);
+  if (!isNaN(dt)) return dt.getFullYear() * 100 + (dt.getMonth() + 1);
+  return -1;
 }
 
 function initSelectAllOnly(selectEl, allLabel) {

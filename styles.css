@@ -5,12 +5,12 @@
   --primary-300: #b2c7ff;
   --primary-500: #4c6ef5;
   --primary-700: #364fc7;
-  --danger-100 : #ffe3e3;
-  --danger-500 : #ff6b6b;
-  --gray-100   : #f8f9fa;
-  --gray-200   : #f1f3f5;
-  --gray-300   : #e9ecef;
-  --radius-lg  : 1rem;
+  --danger-100: #ffe3e3;
+  --danger-500: #ff6b6b;
+  --gray-100: #f8f9fa;
+  --gray-200: #f1f3f5;
+  --gray-300: #e9ecef;
+  --radius-lg: 1rem;
 }
 
 body {
@@ -33,6 +33,7 @@ body {
   padding: .55rem 1rem;
   transition: background-color .2s, color .2s;
 }
+
 .sidebar .nav-link:hover,
 .sidebar .nav-link:focus {
   background-color: var(--primary-100);
@@ -57,14 +58,17 @@ body {
   transition: transform .15s ease, box-shadow .15s ease;
   cursor: pointer;
 }
+
 .card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, .12);
 }
+
 .card-title {
   font-size: 1.05rem;
   font-weight: 600;
 }
+
 .card-text {
   font-size: .9rem;
 }
@@ -74,8 +78,14 @@ body {
   display: inline-block;
   margin-left: .25rem;
 }
-.card-title span[style*="red"] { color: var(--danger-500)!important; }
-.card-title span[style*="black"] { color: var(--primary-700)!important; }
+
+.card-title span[style*="red"] {
+  color: var(--danger-500) !important;
+}
+
+.card-title span[style*="black"] {
+  color: var(--primary-700) !important;
+}
 
 /* 「もっと読む」ボタン */
 .toggle-btn {
@@ -88,7 +98,7 @@ body {
 /* ------------------ タスク追加フォーム ------------------ */
 .border.rounded {
   background: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,.04);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .04);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-lg);
 }
@@ -103,7 +113,7 @@ body {
   background: #fff;
   border-radius: var(--radius-lg);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .05);
 }
 
 .table {
@@ -131,6 +141,7 @@ body {
   cursor: pointer;
   user-select: none;
 }
+
 .sort-header::after {
   content: "⇅";
   font-size: .65rem;
@@ -140,12 +151,15 @@ body {
   transform: translateY(-50%);
   opacity: .4;
 }
+
 .sort-header:hover::after {
   opacity: .8;
 }
 
 /* クリック後の矢印 (JS で ▲▼ を付与した後) */
-th.sort-header:not(.table-light) { background: var(--primary-100)!important; }
+th.sort-header:not(.table-light) {
+  background: var(--primary-100) !important;
+}
 
 /* 操作ボタン */
 .btn-danger.btn-sm {
@@ -164,18 +178,21 @@ th.sort-header:not(.table-light) { background: var(--primary-100)!important; }
   color: #fff;
   border-radius: var(--radius-lg);
   padding: 1rem 1.25rem;
-  box-shadow: 0 3px 10px rgba(0,0,0,.08);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, .08);
   text-align: center;
 }
+
 .kpi-card h3 {
   font-size: .9rem;
   font-weight: 500;
   margin-bottom: .25rem;
 }
+
 .kpi-card .value {
   font-size: 1.6rem;
   font-weight: 700;
 }
+
 .kpi-card .trend {
   font-size: .8rem;
   font-weight: 600;
@@ -196,7 +213,8 @@ th.sort-header:not(.table-light) { background: var(--primary-100)!important; }
 
 /* ===== 臨店一覧：列の視認性とトランケート（PC） ===== */
 #inspectionsTable {
-  table-layout: fixed; /* colgroupの幅を効かせる */
+  table-layout: fixed;
+  /* colgroupの幅を効かせる */
 }
 
 #inspectionsTable th,
@@ -215,7 +233,8 @@ th.sort-header:not(.table-light) { background: var(--primary-100)!important; }
 .clamp-2 {
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2; /* 2行で省略 */
+  -webkit-line-clamp: 2;
+  /* 2行で省略 */
   overflow: hidden;
   line-height: 1.4;
   max-height: calc(1.4em * 2);
