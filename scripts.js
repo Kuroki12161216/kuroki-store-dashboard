@@ -1660,9 +1660,9 @@ async function initInspectionFilters() {
   if (error) {
     console.error("臨店フィルタ候補取得エラー:", error);
     // 失敗時は最低限の「全件」だけ入れておく
-    initSelectAllOnly(inspMonthSelect, "全ての月");
-    initSelectAllOnly(inspCatSelect, "全てのカテゴリー");
-    initSelectAllOnly(inspJudgeSelect, "全ての判定");
+    initSelectAllOnly(inspMonthSelect, "全て");
+    initSelectAllOnly(inspCatSelect, "全て");
+    initSelectAllOnly(inspJudgeSelect, "全て");
     return;
   }
 
@@ -1687,7 +1687,7 @@ async function initInspectionFilters() {
     new Set((data || []).map(r => r[cols.category]).filter(Boolean).map(v => String(v)))
   ).sort((a, b) => a.localeCompare(b, 'ja'));
   inspCatSelect.innerHTML = "";
-  addOption(inspCatSelect, "all", "全てのカテゴリー");
+  addOption(inspCatSelect, "all", "全て");
   cats.forEach(c => addOption(inspCatSelect, c, c));
 
   // 判定
@@ -1695,7 +1695,7 @@ async function initInspectionFilters() {
     new Set((data || []).map(r => r[cols.judge]).filter(Boolean).map(v => String(v)))
   ).sort((a, b) => a.localeCompare(b, 'ja'));
   inspJudgeSelect.innerHTML = "";
-  addOption(inspJudgeSelect, "all", "全ての判定");
+  addOption(inspJudgeSelect, "all", "全て");
   judges.forEach(j => addOption(inspJudgeSelect, j, j));
 
   // 変更イベント
