@@ -278,8 +278,9 @@ async function initDashboard() {
                   return `${name}: ${val == null ? "-" : val.toFixed(1)}%`;
                 if (unit === "yen")
                   return `${name}: ${val == null ? "-" : formatYen(val)}`;
-                return `${name}: ${val == null ? "-" : Number(val).toLocaleString()
-                  }`;
+                return `${name}: ${
+                  val == null ? "-" : Number(val).toLocaleString()
+                }`;
               },
             },
           },
@@ -458,8 +459,9 @@ async function initDashboard() {
       const badgeClass =
         idx === 0 ? "gold" : idx === 1 ? "silver" : idx === 2 ? "bronze" : "";
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><span class="rank-badge ${badgeClass}">${idx + 1
-        }</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
+      tr.innerHTML = `<td><span class="rank-badge ${badgeClass}">${
+        idx + 1
+      }</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
       rankTableBody.appendChild(tr);
     });
   }
@@ -706,17 +708,15 @@ async function initDashboard() {
       alert("「項目」「タスク」は必須です");
       return;
     }
-    const { error } = await supabase
-      .from("タスクテーブル")
-      .insert([
-        {
-          店舗診断表_id: diagId,
-          項目: item,
-          タスク: tDetail,
-          期限: due,
-          責任者: owner,
-        },
-      ]);
+    const { error } = await supabase.from("タスクテーブル").insert([
+      {
+        店舗診断表_id: diagId,
+        項目: item,
+        タスク: tDetail,
+        期限: due,
+        責任者: owner,
+      },
+    ]);
     if (error) {
       alert("タスク送信に失敗しました");
       return;
@@ -778,20 +778,18 @@ async function initDashboard() {
       editTarget.value.trim() === "" ? null : Number(editTarget.value);
     const actual =
       editActual.value.trim() === "" ? null : Number(editActual.value);
-    const { error } = await supabase
-      .from("店舗診断表")
-      .upsert(
-        [
-          {
-            店舗名: store,
-            月: month,
-            項目: item,
-            目標数値: target,
-            実績: actual,
-          },
-        ],
-        { onConflict: "店舗名,月,項目" }
-      );
+    const { error } = await supabase.from("店舗診断表").upsert(
+      [
+        {
+          店舗名: store,
+          月: month,
+          項目: item,
+          目標数値: target,
+          実績: actual,
+        },
+      ],
+      { onConflict: "店舗名,月,項目" }
+    );
     if (error) {
       console.error("保存エラー:", error);
       alert("保存に失敗しました");
@@ -862,7 +860,12 @@ function closeOffcanvas() {
 }
 
 function switchSection(targetId) {
-  const ids = ["dashboardSection", "taskSection", "inspectionSection", "settingsSection"];
+  const ids = [
+    "dashboardSection",
+    "taskSection",
+    "inspectionSection",
+    "settingsSection",
+  ];
   ids.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.style.display = id === targetId ? "block" : "none";
@@ -989,18 +992,22 @@ let _tasksSort = { field: "期限", asc: true };
 // 追加フォーム（#taskAddStoreSelect）は「店舗を選択」を維持
 async function _ensureTaskStoreSelects() {
   const { data, error } = await supabase.from("店舗診断表").select("店舗名");
-  if (error) { console.error('店舗一覧取得エラー', error); return; }
-  const stores = Array.from(new Set((data || []).map(r => r.店舗名))).sort();
+  if (error) {
+    console.error("店舗一覧取得エラー", error);
+    return;
+  }
+  const stores = Array.from(new Set((data || []).map((r) => r.店舗名))).sort();
 
-  const taskAddStoreSelect = document.getElementById('taskAddStoreSelect');
-  const storeSelectTask = document.getElementById('storeSelectTask');
+  const taskAddStoreSelect = document.getElementById("taskAddStoreSelect");
+  const storeSelectTask = document.getElementById("storeSelectTask");
 
   // 追加フォーム側：必ず単一店舗を選ばせる（先頭はプレースホルダ）
   if (taskAddStoreSelect) {
     const current = taskAddStoreSelect.value;
     taskAddStoreSelect.innerHTML = '<option value="">店舗を選択</option>';
-    stores.forEach(s => {
-      const o = document.createElement('option'); o.value = o.textContent = s;
+    stores.forEach((s) => {
+      const o = document.createElement("option");
+      o.value = o.textContent = s;
       taskAddStoreSelect.appendChild(o);
     });
     if (stores.includes(current)) taskAddStoreSelect.value = current;
@@ -1010,14 +1017,14 @@ async function _ensureTaskStoreSelects() {
   if (storeSelectTask) {
     const current = storeSelectTask.value; // 既存選択を一応保持
     storeSelectTask.innerHTML = '<option value="">全ての店舗</option>';
-    stores.forEach(s => {
-      const o = document.createElement('option'); o.value = o.textContent = s;
+    stores.forEach((s) => {
+      const o = document.createElement("option");
+      o.value = o.textContent = s;
       storeSelectTask.appendChild(o);
     });
-    storeSelectTask.value = (current && stores.includes(current)) ? current : '';
+    storeSelectTask.value = current && stores.includes(current) ? current : "";
   }
 }
-
 
 // タスク取得（店舗診断表と結合して店舗名を引く）
 async function _fetchTasksRaw() {
@@ -1118,19 +1125,21 @@ function _renderTasks() {
       r.item
     )}</div>
           <div class="text-truncate-2 small text-muted">${_escapeHtml(
-      r.task
-    )}</div>
+            r.task
+          )}</div>
           <div class="small mt-1">
-            <span class="me-2"><i class="bi bi-calendar-event"></i> ${r.due ? _fmtDateYYYYMMDD(r.due) : "-"
-      }</span>
+            <span class="me-2"><i class="bi bi-calendar-event"></i> ${
+              r.due ? _fmtDateYYYYMMDD(r.due) : "-"
+            }</span>
             <span><i class="bi bi-person"></i> ${_escapeHtml(
-        r.owner || "-"
-      )}</span>
+              r.owner || "-"
+            )}</span>
           </div>
         </div>
         <div>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${r.id
-      })"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${
+            r.id
+          })"><i class="bi bi-trash"></i></button>
         </div>
       </div>
     `;
@@ -1240,17 +1249,15 @@ async function addTaskFromList() {
     return;
   }
 
-  const { error } = await supabase
-    .from("タスクテーブル")
-    .insert([
-      {
-        店舗診断表_id: diagId,
-        項目: item,
-        タスク: task,
-        期限: due,
-        責任者: owner,
-      },
-    ]);
+  const { error } = await supabase.from("タスクテーブル").insert([
+    {
+      店舗診断表_id: diagId,
+      項目: item,
+      タスク: task,
+      期限: due,
+      責任者: owner,
+    },
+  ]);
 
   if (error) {
     console.error(error);
@@ -1285,18 +1292,18 @@ async function deleteTask(id) {
 
 /* --- 設定：Supabase テーブル名とカラムのマッピング --- */
 /* 添付Excelの構成に合わせて、必要に応じて下記だけ変更してください。 */
-const INSPECTION_TABLE = "臨店一覧";   // ← Supabase 側の臨店テーブル名に変更
+const INSPECTION_TABLE = "臨店一覧"; // ← Supabase 側の臨店テーブル名に変更
 const INSPECTION_COLS = {
   // 例：Excelが「月」「カテゴリ」「項目」「判定」「特記事項」「URL」「店舗診断表_id」で入ってくる想定
-  month: "月",             // yyyymm / もしくは yyyy-mm
-  category: "カテゴリ",     // 例：サービス/クリーンネス/料理 等
-  item: "設問",            // 点検項目名
-  judge: "判定",           // 〇/× など
-  note: "特記事項",        // テキスト
-  url: "url",              // 写真や資料のURL
+  month: "月", // yyyymm / もしくは yyyy-mm
+  category: "カテゴリ", // 例：サービス/クリーンネス/料理 等
+  item: "設問", // 点検項目名
+  judge: "判定", // 〇/× など
+  note: "特記事項", // テキスト
+  url: "url", // 写真や資料のURL
   // diag_fk: "店舗診断表_id", // 店舗診断表の外部キー（なければ null 想定）
   // // もし臨店テーブルに「店舗名」が直であるなら、下記を実カラム名にして使えます（join不要）
-  store_direct: "店舗",        // 例: "店舗名" に変えると直接使用。null の場合は join で取得。
+  store_direct: "店舗", // 例: "店舗名" に変えると直接使用。null の場合は join で取得。
 };
 /* --- DOM（臨店一覧） --- */
 const inspectionSection = document.getElementById("inspectionSection");
@@ -1317,30 +1324,36 @@ let currentInspSortDir = "asc";
 /* ▼ 追加：フィルター状態 */
 const inspFilters = {
   store: "",
-  month: "",      // DBの生値（例：yyyymm）で持つ
+  month: "", // DBの生値（例：yyyymm）で持つ
   category: "all",
   judge: "all",
 };
 
-
 window.initInspectionPage = async function () {
-  await initInspectionFilters();     // ← ここで store, month, category, judge をまとめて初期化
+  await initInspectionFilters(); // ← ここで store, month, category, judge をまとめて初期化
   await fetchAndDisplayInspections();
   subscribeInspectionsRealtime();
   window.refreshInspections = () => fetchAndDisplayInspections(true);
 };
 
-
 /* --- 店舗セレクトを生成（診断表からユニーク抽出 or 直カラム） --- */
 async function initInspectionStoreDropdown() {
   let storeNames = [];
   if (INSPECTION_COLS.store_direct) {
-    const { data, error } = await supabase.from(INSPECTION_TABLE).select(INSPECTION_COLS.store_direct);
-    if (!error && data) storeNames = [...new Set(data.map(r => r[INSPECTION_COLS.store_direct]).filter(Boolean))];
+    const { data, error } = await supabase
+      .from(INSPECTION_TABLE)
+      .select(INSPECTION_COLS.store_direct);
+    if (!error && data)
+      storeNames = [
+        ...new Set(
+          data.map((r) => r[INSPECTION_COLS.store_direct]).filter(Boolean)
+        ),
+      ];
   } else {
     // 店舗診断表から抽出（タスク一覧同様）
     const { data, error } = await supabase.from("店舗診断表").select("店舗名");
-    if (!error && data) storeNames = [...new Set(data.map(r => r.店舗名).filter(Boolean))];
+    if (!error && data)
+      storeNames = [...new Set(data.map((r) => r.店舗名).filter(Boolean))];
   }
 
   // 「全店舗」を先頭に
@@ -1348,7 +1361,8 @@ async function initInspectionStoreDropdown() {
 
   storeNames.forEach((name) => {
     const opt = document.createElement("option");
-    opt.value = name; opt.textContent = name;
+    opt.value = name;
+    opt.textContent = name;
     storeSelectInspection.appendChild(opt);
   });
 
@@ -1398,12 +1412,17 @@ async function fetchAndDisplayInspections(force = false) {
   }
 
   const { data: result, error } = await query;
-  if (error) { console.error("臨店一覧取得エラー:", error); return; }
+  if (error) {
+    console.error("臨店一覧取得エラー:", error);
+    return;
+  }
 
-  inspectionsDataGlobal = (result || []).map(r => {
+  inspectionsDataGlobal = (result || []).map((r) => {
     const storeName = cols.store_direct
-      ? (r[cols.store_direct] ?? "")
-      : (Array.isArray(r.店舗診断表) ? (r.店舗診断表[0]?.店舗名 ?? "") : (r.店舗診断表?.店舗名 ?? ""));
+      ? r[cols.store_direct] ?? ""
+      : Array.isArray(r.店舗診断表)
+      ? r.店舗診断表[0]?.店舗名 ?? ""
+      : r.店舗診断表?.店舗名 ?? "";
 
     return {
       id: r.id,
@@ -1413,7 +1432,7 @@ async function fetchAndDisplayInspections(force = false) {
       項目値: r[cols.item] ?? "",
       判定値: r[cols.judge] ?? "",
       特記事項値: r[cols.note] ?? "",
-      URL値: r[cols.url] ?? ""
+      URL値: r[cols.url] ?? "",
     };
   });
 
@@ -1428,11 +1447,12 @@ function normalizeMonth(v) {
   if (/^\d{6}$/.test(v)) return `${v.slice(0, 4)}/${v.slice(4, 6)}`;
   if (/^\d{4}[-/]\d{1,2}$/.test(v)) {
     const m = v.match(/^(\d{4})[-/](\d{1,2})$/);
-    return `${m[1]}/${String(m[2]).padStart(2, '0')}`;
+    return `${m[1]}/${String(m[2]).padStart(2, "0")}`;
   }
   // Date っぽいもの
   const dt = new Date(v);
-  if (!isNaN(dt)) return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}`;
+  if (!isNaN(dt))
+    return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
   return String(v);
 }
 
@@ -1492,34 +1512,88 @@ function renderInspections() {
     /* ここから下（モバイルlist-group生成）はそのまま */
     const li = document.createElement("div");
     li.className = "list-group-item p-0";
+
     const bg = document.createElement("div");
     bg.className = "lg-swipe-bg";
-    bg.innerHTML = `<span class="fw-bold text-danger-emphasis"><i class="bi bi-trash3 me-1"></i></span>`;
+    bg.innerHTML = `<span class="fw-bold text-danger-emphasis">
+  <i class="bi bi-trash3 me-1"></i>
+</span>`;
+
     const fore = document.createElement("div");
-    fore.className = "lg-swipe-fore p-3";
+    // カード風のクラスを追加しておく（CSSは後述）
+    fore.className = "lg-swipe-fore p-3 insp-card";
+
     const urlsArr = _splitUrls(row.URL値);
     const thumbHtml = _buildMobileThumbHtml(urlsArr);
+
+    // 判定バッジ用
+    const judgeText = _escapeHtml(row.判定値 || "-");
+    const judgeClass =
+      judgeText === "○"
+        ? "bg-warning-subtle text-warning-emphasis"
+        : judgeText === "×"
+        ? "bg-danger-subtle text-danger-emphasis"
+        : "bg-secondary-subtle text-secondary-emphasis";
+
     fore.innerHTML = `
-  <div class="d-flex justify-content-between align-items-start">
-    <div class="pe-3 flex-grow-1">
+  <div class="d-flex">
+    <!-- 左側：テキストブロック -->
+    <div class="flex-grow-1 pe-3">
       <div class="small text-muted mb-1">
-        ${row.カテゴリ値 ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(row.カテゴリ値)}</span>` : ""}
+        ${
+          row.カテゴリ値
+            ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(
+                row.カテゴリ値
+              )}</span>`
+            : ""
+        }
       </div>
 
-      <div class="fw-semibold text-truncate-2">${_escapeHtml(row.項目値 || "(項目未設定)")}</div>
-      判定: ${_escapeHtml(row.判定値 || "-")}
-      ${row.特記事項値 ? `<div class="small mt-2">${_escapeHtml(row.特記事項値)}</div>` : ""}
+      <div class="fw-semibold text-truncate-2 mb-1">
+        ${_escapeHtml(row.項目値 || "(項目未設定)")}
+      </div>
 
-      ${thumbHtml
-        ? `<div class="mt-2">${thumbHtml}</div>`
-        : (row.URL値
-          ? `<div class="small mt-2"><a href="${_escapeHtml(row.URL値)}" target="_blank" rel="noopener" class="insp-mobile-link-fallback">資料リンク</a></div>`
-          : ``)
+      <div class="mb-1">
+        <span class="badge rounded-pill ${judgeClass}">
+          判定：${judgeText}
+        </span>
+      </div>
+
+      ${
+        row.特記事項値
+          ? `<div class="small text-muted mt-1">
+               ${_escapeHtml(row.特記事項値)}
+             </div>`
+          : ""
+      }
+
+      ${
+        !thumbHtml && row.URL値
+          ? `<div class="small mt-2">
+               <a href="${_escapeHtml(row.URL値)}"
+                  target="_blank" rel="noopener"
+                  class="insp-mobile-link-fallback">
+                 資料リンク
+               </a>
+             </div>`
+          : ""
       }
     </div>
 
+    <!-- 右側：サムネイル -->
+    ${
+      thumbHtml
+        ? `<div class="flex-shrink-0 ms-2 insp-thumb-wrap">
+             ${thumbHtml}
+           </div>`
+        : ""
+    }
   </div>
-    `;
+`;
+
+    li.appendChild(bg);
+    li.appendChild(fore);
+
     const wrap = document.createElement("div");
     wrap.className = "lg-swipe-wrap";
     wrap.append(bg, fore);
@@ -1527,52 +1601,62 @@ function renderInspections() {
     inspectionsListMobile.appendChild(li);
 
     if (typeof addMobileSwipe === "function") {
-      addMobileSwipe(li, fore, async () => await confirmAndDeleteInspection(row.id));
+      addMobileSwipe(
+        li,
+        fore,
+        async () => await confirmAndDeleteInspection(row.id)
+      );
     }
     // モバイル：資料リンク（画像）のクリックを横取りしてモーダル
     // モバイル：サムネ or フォールバックリンクのクリックでモーダル/新規タブ
     if (!window.__insp_mobile_modal_bound) {
       window.__insp_mobile_modal_bound = true;
-      document.getElementById("inspectionsListMobile").addEventListener("click", (e) => {
-        // ① サムネがある場合（候補URLをdata属性に持つ）
-        const thumb = e.target.closest("a.insp-mobile-thumb");
-        if (thumb) {
-          e.preventDefault();
-          try {
-            const raw = thumb.getAttribute("data-candidates") || "[]";
-            const candidates = JSON.parse(decodeURIComponent(raw));
-            window.__openInspectionImageModal(candidates, "画像プレビュー");
-          } catch {
-            // JSON壊れてたら最後の手としてhrefへ
-            const href = thumb.getAttribute("href");
-            if (href) window.open(href, "_blank", "noopener");
+      document
+        .getElementById("inspectionsListMobile")
+        .addEventListener("click", (e) => {
+          // ① サムネがある場合（候補URLをdata属性に持つ）
+          const thumb = e.target.closest("a.insp-mobile-thumb");
+          if (thumb) {
+            e.preventDefault();
+            try {
+              const raw = thumb.getAttribute("data-candidates") || "[]";
+              const candidates = JSON.parse(decodeURIComponent(raw));
+              window.__openInspectionImageModal(candidates, "画像プレビュー");
+            } catch {
+              // JSON壊れてたら最後の手としてhrefへ
+              const href = thumb.getAttribute("href");
+              if (href) window.open(href, "_blank", "noopener");
+            }
+            return;
           }
-          return;
-        }
 
-        // ② サムネが無い時のフォールバック（通常リンク）
-        const a = e.target.closest("a.insp-mobile-link-fallback");
-        if (a) {
-          // そのまま別タブでOK
-          return;
-        }
-      });
+          // ② サムネが無い時のフォールバック（通常リンク）
+          const a = e.target.closest("a.insp-mobile-link-fallback");
+          if (a) {
+            // そのまま別タブでOK
+            return;
+          }
+        });
     }
-
-
   });
 }
 
 /* --- 削除（トースト確認 → Supabase削除） --- */
 async function confirmAndDeleteInspection(id) {
-  const action = (typeof showDeleteToast === "function")
-    ? await showDeleteToast()
-    : (confirm("このレコードを削除しますか？") ? 'delete' : 'cancel');
+  const action =
+    typeof showDeleteToast === "function"
+      ? await showDeleteToast()
+      : confirm("このレコードを削除しますか？")
+      ? "delete"
+      : "cancel";
 
-  if (action !== 'delete') return false;
+  if (action !== "delete") return false;
 
   try {
-    const { error } = await supabase.from(INSPECTION_TABLE).delete().eq("id", id);
+    const { error } = await supabase
+      .from(INSPECTION_TABLE)
+      .delete()
+      .eq("id", id);
     if (error) throw error;
     fetchAndDisplayInspections();
     return true;
@@ -1589,17 +1673,25 @@ async function deleteInspection(id) {
 /* --- Realtime（タスク一覧と同様） --- */
 function subscribeInspectionsRealtime() {
   if (window.__inspectionsChannel) return;
-  const channel = supabase.channel('inspections-realtime')
-    .on('postgres_changes', { event: '*', schema: 'public', table: INSPECTION_TABLE },
+  const channel = supabase
+    .channel("inspections-realtime")
+    .on(
+      "postgres_changes",
+      { event: "*", schema: "public", table: INSPECTION_TABLE },
       () => fetchAndDisplayInspections()
-    ).subscribe();
+    )
+    .subscribe();
   window.__inspectionsChannel = channel;
 }
 
 /* --- ソート --- */
 window.sortInspections = function (column) {
-  if (currentInspSortColumn === column) currentInspSortDir = (currentInspSortDir === "asc" ? "desc" : "asc");
-  else { currentInspSortColumn = column; currentInspSortDir = "asc"; }
+  if (currentInspSortColumn === column)
+    currentInspSortDir = currentInspSortDir === "asc" ? "desc" : "asc";
+  else {
+    currentInspSortColumn = column;
+    currentInspSortDir = "asc";
+  }
 
   inspectionsDataGlobal.sort((a, b) => {
     const va = a[column] ?? "";
@@ -1622,8 +1714,12 @@ function updateInspectionSortIndicators(column, dir) {
   const thNote = document.getElementById("thInspNote");
   const thUrl = document.getElementById("thInspUrl");
 
-  thStore.textContent = "店舗"; thMonth.textContent = "月"; thCat.textContent = "カテゴリ";
-  thItem.textContent = "項目"; thJudge.textContent = "判定"; thNote.textContent = "特記事項";
+  thStore.textContent = "店舗";
+  thMonth.textContent = "月";
+  thCat.textContent = "カテゴリ";
+  thItem.textContent = "項目";
+  thJudge.textContent = "判定";
+  thNote.textContent = "特記事項";
   thUrl.textContent = "URL";
 
   if (!column) return;
@@ -1654,7 +1750,9 @@ async function initInspectionFilters() {
   // 2) 月・カテゴリー・判定の選択肢
   const cols = INSPECTION_COLS;
   let selectClause = `${cols.month}, ${cols.category}, ${cols.judge}`;
-  const { data, error } = await supabase.from(INSPECTION_TABLE).select(selectClause);
+  const { data, error } = await supabase
+    .from(INSPECTION_TABLE)
+    .select(selectClause);
   if (error) {
     console.error("臨店フィルタ候補取得エラー:", error);
     // 失敗時は最低限の「全件」だけ入れておく
@@ -1666,35 +1764,52 @@ async function initInspectionFilters() {
 
   // 月（DB生値をvalue、ラベルはYYYY/MMに）
   const monthsRaw = Array.from(
-    new Set((data || []).map(r => r[cols.month]).filter(Boolean).map(v => String(v)))
+    new Set(
+      (data || [])
+        .map((r) => r[cols.month])
+        .filter(Boolean)
+        .map((v) => String(v))
+    )
   );
   // ★ yyyymmキーで昇順 → 後ろが最新
   monthsRaw.sort((a, b) => _monthToKey(a) - _monthToKey(b));
   inspMonthSelect.innerHTML = "";
   // ★ 「全ての月」は作らない
-  monthsRaw.forEach(raw => addOption(inspMonthSelect, raw, normalizeMonth(raw)));
+  monthsRaw.forEach((raw) =>
+    addOption(inspMonthSelect, raw, normalizeMonth(raw))
+  );
   // ★ 初期値：最新月
   const latestRaw = monthsRaw[monthsRaw.length - 1];
   if (latestRaw) {
-    inspFilters.month = latestRaw;            // ← DB生値でフィルタ保持
-    inspMonthSelect.value = latestRaw;        // ← UIにも反映
+    inspFilters.month = latestRaw; // ← DB生値でフィルタ保持
+    inspMonthSelect.value = latestRaw; // ← UIにも反映
   }
 
   // カテゴリー
   const cats = Array.from(
-    new Set((data || []).map(r => r[cols.category]).filter(Boolean).map(v => String(v)))
-  ).sort((a, b) => a.localeCompare(b, 'ja'));
+    new Set(
+      (data || [])
+        .map((r) => r[cols.category])
+        .filter(Boolean)
+        .map((v) => String(v))
+    )
+  ).sort((a, b) => a.localeCompare(b, "ja"));
   inspCatSelect.innerHTML = "";
   addOption(inspCatSelect, "all", "全て");
-  cats.forEach(c => addOption(inspCatSelect, c, c));
+  cats.forEach((c) => addOption(inspCatSelect, c, c));
 
   // 判定
   const judges = Array.from(
-    new Set((data || []).map(r => r[cols.judge]).filter(Boolean).map(v => String(v)))
-  ).sort((a, b) => a.localeCompare(b, 'ja'));
+    new Set(
+      (data || [])
+        .map((r) => r[cols.judge])
+        .filter(Boolean)
+        .map((v) => String(v))
+    )
+  ).sort((a, b) => a.localeCompare(b, "ja"));
   inspJudgeSelect.innerHTML = "";
   addOption(inspJudgeSelect, "all", "全て");
-  judges.forEach(j => addOption(inspJudgeSelect, j, j));
+  judges.forEach((j) => addOption(inspJudgeSelect, j, j));
 
   // 変更イベント
   // storeSelectInspection?.addEventListener("change", () => {
@@ -1736,10 +1851,10 @@ function initSelectAllOnly(selectEl, allLabel) {
 }
 function addOption(selectEl, value, label) {
   const o = document.createElement("option");
-  o.value = value; o.textContent = label;
+  o.value = value;
+  o.textContent = label;
   selectEl.appendChild(o);
 }
-
 
 /* ===== 臨店一覧：URL 加工／サムネ生成ユーティリティ ===== */
 
@@ -1747,7 +1862,7 @@ function addOption(selectEl, value, label) {
 function _splitUrls(s) {
   return (s || "")
     .split(/[\s,、\n\r]+/)
-    .map(u => u.trim())
+    .map((u) => u.trim())
     .filter(Boolean);
 }
 
@@ -1759,11 +1874,11 @@ function _isImageUrl(u) {
 // いろいろな Drive/Docs URLから ID を抽出
 function _extractDriveId(url) {
   const patterns = [
-    /\/file\/d\/([a-zA-Z0-9_-]{10,})/,         // drive.google.com/file/d/ID
-    /\/document\/d\/([a-zA-Z0-9_-]{10,})/,     // docs.google.com/document/d/ID
+    /\/file\/d\/([a-zA-Z0-9_-]{10,})/, // drive.google.com/file/d/ID
+    /\/document\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/document/d/ID
     /\/spreadsheets\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/spreadsheets/d/ID
     /\/presentation\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/presentation/d/ID
-    /[?&]id=([a-zA-Z0-9_-]{10,})/              // open?id=ID
+    /[?&]id=([a-zA-Z0-9_-]{10,})/, // open?id=ID
   ];
   for (const re of patterns) {
     const m = url.match(re);
@@ -1790,7 +1905,9 @@ function _faviconUrl(u) {
   try {
     const { hostname } = new URL(u);
     return `https://www.google.com/s2/favicons?sz=32&domain=${hostname}`;
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 }
 
 /**
@@ -1805,19 +1922,21 @@ function buildUrlPreviewNode(urls) {
   const wrap = document.createElement("div");
   wrap.className = "insp-url-wrap d-flex flex-wrap gap-2";
 
-  urls.forEach(u => {
+  urls.forEach((u) => {
     const id = _extractDriveId(u);
     if (id) {
       // Drive: サムネ表示 / クリックで モーダル(原寸→サムネHD→元URL の順に試す)
       const a = document.createElement("a");
-      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.href = u;
+      a.target = "_blank";
+      a.rel = "noopener";
       a.className = "insp-url-thumb-link";
       a.addEventListener("click", (e) => {
         e.preventDefault();
         const candidates = [
-          _driveDirectViewUrl(id),  // 原寸（権限で失敗しがち）
-          _driveThumbHdUrl(id),     // HDサムネ（成功率高め）
-          u                         // 最後は元のDriveページを新規タブ
+          _driveDirectViewUrl(id), // 原寸（権限で失敗しがち）
+          _driveThumbHdUrl(id), // HDサムネ（成功率高め）
+          u, // 最後は元のDriveページを新規タブ
         ];
         window.__openInspectionImageModal(candidates, "Drive画像プレビュー");
       });
@@ -1834,7 +1953,9 @@ function buildUrlPreviewNode(urls) {
         try {
           const fav = _faviconUrl(u);
           const { hostname } = new URL(u);
-          a.innerHTML = `${fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""} ${_escapeHtml(hostname)}`;
+          a.innerHTML = `${
+            fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""
+          } ${_escapeHtml(hostname)}`;
         } catch {
           a.textContent = "リンク";
         }
@@ -1847,7 +1968,9 @@ function buildUrlPreviewNode(urls) {
     if (_isImageUrl(u)) {
       // 直リンク画像：クリックでモーダル（失敗時は元URLを開く）
       const a = document.createElement("a");
-      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.href = u;
+      a.target = "_blank";
+      a.rel = "noopener";
       a.className = "insp-url-thumb-link";
       a.addEventListener("click", (e) => {
         e.preventDefault();
@@ -1869,13 +1992,19 @@ function buildUrlPreviewNode(urls) {
       const fav = _faviconUrl(u);
       const { hostname } = new URL(u);
       const a = document.createElement("a");
-      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.href = u;
+      a.target = "_blank";
+      a.rel = "noopener";
       a.className = "insp-url-chip btn btn-sm btn-outline-secondary";
-      a.innerHTML = `${fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""} ${_escapeHtml(hostname)}`;
+      a.innerHTML = `${
+        fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""
+      } ${_escapeHtml(hostname)}`;
       wrap.appendChild(a);
     } catch {
       const a = document.createElement("a");
-      a.href = u; a.target = "_blank"; a.rel = "noopener";
+      a.href = u;
+      a.target = "_blank";
+      a.rel = "noopener";
       a.textContent = "リンク";
       wrap.appendChild(a);
     }
@@ -1886,11 +2015,12 @@ function buildUrlPreviewNode(urls) {
 
 // ▼ モバイル用：URL配列からサムネ<a>を1つ生成（Drive/直リンク画像のみ）
 function _buildMobileThumbHtml(urls) {
-  const first = (urls || []).map(s => s.trim()).filter(Boolean)[0];
+  const first = (urls || []).map((s) => s.trim()).filter(Boolean)[0];
   if (!first) return "";
 
   const id = _extractDriveId(first);
-  let thumbSrc = "", candidates = [];
+  let thumbSrc = "",
+    candidates = [];
 
   if (id) {
     // Drive系：一覧は軽量サムネ、モーダルは原寸→HDサムネ→元URLの順で試行
@@ -1910,7 +2040,9 @@ function _buildMobileThumbHtml(urls) {
        class="insp-mobile-thumb"
        data-candidates='${candAttr}'
        aria-label="画像プレビュー">
-      <img src="${_escapeHtml(thumbSrc)}" alt="プレビュー" class="insp-url-thumb">
+      <img src="${_escapeHtml(
+        thumbSrc
+      )}" alt="プレビュー" class="insp-url-thumb">
     </a>`;
 }
 
@@ -1922,11 +2054,10 @@ function _buildMobileThumbHtml(urls) {
     .insp-favicon { width: 16px; height:16px; vertical-align: -3px; margin-right: 4px; }
     .insp-url-chip { display:inline-flex; align-items:center; gap:6px; }
   `;
-  const s = document.createElement("style"); s.textContent = css;
+  const s = document.createElement("style");
+  s.textContent = css;
   document.head.appendChild(s);
 })();
-
-
 
 // 外部（HTML）から呼べるように公開
 window.fetchAndDisplayTasks = fetchAndDisplayTasks;
@@ -1985,7 +2116,9 @@ window.refreshTasks = () => fetchAndDisplayTasks(true);
     }
 
     closeBtn.addEventListener("click", hide);
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) hide(); });
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) hide();
+    });
     img.addEventListener("click", hide);
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && overlay.style.display !== "none") hide();
@@ -2000,7 +2133,10 @@ window.refreshTasks = () => fetchAndDisplayTasks(true);
   function loadWithFallback(imgEl, urls, onFailLast) {
     let i = 0;
     const tryNext = () => {
-      if (i >= urls.length) { onFailLast?.(); return; }
+      if (i >= urls.length) {
+        onFailLast?.();
+        return;
+      }
       const url = urls[i++];
       imgEl.onerror = tryNext;
       imgEl.src = url;
