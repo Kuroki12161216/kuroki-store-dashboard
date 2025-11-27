@@ -1503,8 +1503,6 @@ function renderInspections() {
   <div class="d-flex justify-content-between align-items-start">
     <div class="pe-3 flex-grow-1">
       <div class="small text-muted mb-1">
-        <span class="me-2"><i class="bi bi-shop"></i> ${_escapeHtml(row.店舗名 || "-")}</span>
-        <span class="me-2"><i class="bi bi-calendar3"></i> ${_escapeHtml(row.月値 || "-")}</span>
         ${row.カテゴリ値 ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(row.カテゴリ値)}</span>` : ""}
       </div>
 
