@@ -1,4 +1,26 @@
 import { supabase } from "./supabaseClient.js";
+import {
+  _escapeHtml,
+  _splitUrls,
+  _extractDriveId,
+  _driveThumbUrl,
+  _driveDirectViewUrl,
+  _driveThumbHdUrl,
+  _faviconUrl,
+  normalizeMonth,
+  _monthToKey,
+  _fmtDateYYYYMMDD,
+  _currentYYYYMM,
+  _isImageUrl
+} from "./utils.js";
+
+import {
+  showDashboardSection,
+  showTaskSection,
+  showInspectionSection,
+  showSettingsSection,
+} from "./routing.js";
+
 /* ===== ダッシュボード：初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initDashboard();
@@ -269,9 +291,8 @@ async function initDashboard() {
                   return `${name}: ${val == null ? "-" : val.toFixed(1)}%`;
                 if (unit === "yen")
                   return `${name}: ${val == null ? "-" : formatYen(val)}`;
-                return `${name}: ${
-                  val == null ? "-" : Number(val).toLocaleString()
-                }`;
+                return `${name}: ${val == null ? "-" : Number(val).toLocaleString()
+                  }`;
               },
             },
           },
@@ -450,9 +471,8 @@ async function initDashboard() {
       const badgeClass =
         idx === 0 ? "gold" : idx === 1 ? "silver" : idx === 2 ? "bronze" : "";
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td><span class="rank-badge ${badgeClass}">${
-        idx + 1
-      }</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
+      tr.innerHTML = `<td><span class="rank-badge ${badgeClass}">${idx + 1
+        }</span></td><td>${r.store}</td><td>${r.score} / 110点</td>`;
       rankTableBody.appendChild(tr);
     });
   }
@@ -837,68 +857,6 @@ async function initDashboard() {
   toggleYoy.addEventListener("change", renderAllCharts);
 }
 
-/* ========= セクション表示切り替え ========= */
-function closeOffcanvas() {
-  const el = document.getElementById("offcanvasNavbar");
-  if (!el || !window.bootstrap) return;
-  try {
-    const inst =
-      bootstrap.Offcanvas.getInstance(el) || new bootstrap.Offcanvas(el);
-    inst.hide();
-  } catch (e) {
-    /* noop */
-  }
-}
-
-function switchSection(targetId) {
-  const ids = [
-    "dashboardSection",
-    "taskSection",
-    "inspectionSection",
-    "settingsSection",
-  ];
-  ids.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = id === targetId ? "block" : "none";
-  });
-
-  // ナビのactive表示
-  document
-    .querySelectorAll("nav .nav-link")
-    .forEach((btn) => btn.classList.remove("active"));
-  const selectorMap = {
-    dashboardSection: 'button.nav-link[onclick*="showDashboardSection"]',
-    taskSection: 'button.nav-link[onclick*="showTaskSection"]',
-    inspectionSection: 'button.nav-link[onclick*="showInspectionSection"]',
-    settingsSection: 'button.nav-link[onclick*="showSettingsSection"]',
-  };
-  document.querySelector(selectorMap[targetId])?.classList.add("active");
-
-  closeOffcanvas();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function showDashboardSection() {
-  switchSection("dashboardSection");
-  // 画面復帰時に必要なら再描画
-  // updateAllKPIs(storeSelect.value, targetDateInput.value);
-  // renderAllCharts();
-}
-
-async function showTaskSection() {
-  switchSection("taskSection");
-
-  // 店舗セレクト初期化（未設定時のみ）
-  await _ensureTaskStoreSelects();
-
-  // 一覧の再取得
-  if (typeof window.fetchAndDisplayTasks === "function") {
-    window.fetchAndDisplayTasks();
-  } else if (typeof fetchAndDisplayTasks === "function") {
-    fetchAndDisplayTasks();
-  }
-}
-
 function updateNotificationBadge() {
   const badge = document.getElementById("notificationStatus");
   if (!badge) return;
@@ -921,11 +879,6 @@ function updateNotificationBadge() {
   }
 }
 
-function showSettingsSection() {
-  switchSection("settingsSection");
-  updateNotificationBadge();
-}
-
 // 設定画面の「通知の許可」ボタン用（未実装ならここで公開）
 if (!("requestNotificationPermission" in window)) {
   window.requestNotificationPermission = async function () {
@@ -936,42 +889,6 @@ if (!("requestNotificationPermission" in window)) {
     await Notification.requestPermission();
     updateNotificationBadge();
   };
-}
-
-// グローバル公開（HTMLのonclickから呼べるように）
-window.showDashboardSection = showDashboardSection;
-window.showTaskSection = showTaskSection;
-window.showSettingsSection = showSettingsSection;
-window.closeOffcanvas = closeOffcanvas;
-
-/* =========================
-   タスク一覧ページ：取得/描画/追加/削除/並べ替え
-   ========================= */
-
-// ユーティリティ
-function _escapeHtml(s) {
-  return (s ?? "")
-    .toString()
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-function _fmtDateYYYYMMDD(d) {
-  if (!d) return "";
-  const t = new Date(d);
-  if (isNaN(t)) return d;
-  const y = t.getFullYear(),
-    m = String(t.getMonth() + 1).padStart(2, "0"),
-    day = String(t.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-function _currentYYYYMM() {
-  const v = document.getElementById("target-date")?.value;
-  if (v) return v.slice(0, 7).replace("-", "");
-  const t = new Date();
-  return `${t.getFullYear()}${String(t.getMonth() + 1).padStart(2, "0")}`;
 }
 
 // クライアント側の状態
@@ -1136,24 +1053,22 @@ function _renderTasks() {
       <div class="d-flex justify-content-between align-items-start">
         <div class="me-2">
           <div class="fw-bold">${_escapeHtml(r.store)} / ${_escapeHtml(
-            r.item
-          )}</div>
+      r.item
+    )}</div>
           <div class="text-truncate-2 small text-muted">${_escapeHtml(
-            r.task
-          )}</div>
+      r.task
+    )}</div>
           <div class="small mt-1">
-            <span class="me-2 ${
-              isOverdue ? "text-danger fw-bold" : ""
-            }"><i class="bi bi-calendar-event"></i> ${dueStr}</span>
+            <span class="me-2 ${isOverdue ? "text-danger fw-bold" : ""
+      }"><i class="bi bi-calendar-event"></i> ${dueStr}</span>
             <span><i class="bi bi-person"></i> ${_escapeHtml(
-              r.owner || "-"
-            )}</span>
+        r.owner || "-"
+      )}</span>
           </div>
         </div>
         <div>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${
-            r.id
-          })"><i class="bi bi-trash"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteTask(${r.id
+      })"><i class="bi bi-trash"></i></button>
         </div>
       </div>
     `;
@@ -1210,7 +1125,7 @@ async function updateOverdueBadge(count = 0) {
 
   // --- タイトルに件数をバッジ表示 ---
   try {
-    const base = updateOverdueBadge._baseTitle || document.title.replace(/^\(\d+\)\s*/,'');
+    const base = updateOverdueBadge._baseTitle || document.title.replace(/^\(\d+\)\s*/, '');
     updateOverdueBadge._baseTitle = base;
     document.title = (count > 0 ? `(${count}) ` : '') + base;
   } catch (e) {
@@ -1546,8 +1461,8 @@ async function fetchAndDisplayInspections(force = false) {
     const storeName = cols.store_direct
       ? r[cols.store_direct] ?? ""
       : Array.isArray(r.店舗診断表)
-      ? r.店舗診断表[0]?.店舗名 ?? ""
-      : r.店舗診断表?.店舗名 ?? "";
+        ? r.店舗診断表[0]?.店舗名 ?? ""
+        : r.店舗診断表?.店舗名 ?? "";
 
     return {
       id: r.id,
@@ -1563,22 +1478,6 @@ async function fetchAndDisplayInspections(force = false) {
 
   renderInspections();
   updateInspectionSortIndicators(null, null);
-}
-
-/* --- 月の表記を YYYY/MM に正規化（yyyymm/yyy-mm/Date も対応） --- */
-function normalizeMonth(v) {
-  if (!v) return "";
-  if (typeof v === "number") v = String(v);
-  if (/^\d{6}$/.test(v)) return `${v.slice(0, 4)}/${v.slice(4, 6)}`;
-  if (/^\d{4}[-/]\d{1,2}$/.test(v)) {
-    const m = v.match(/^(\d{4})[-/](\d{1,2})$/);
-    return `${m[1]}/${String(m[2]).padStart(2, "0")}`;
-  }
-  // Date っぽいもの
-  const dt = new Date(v);
-  if (!isNaN(dt))
-    return `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, "0")}`;
-  return String(v);
 }
 
 /* --- 描画（PCテーブル & モバイル） --- */
@@ -1657,21 +1556,20 @@ function renderInspections() {
       judgeText === "○"
         ? "bg-warning-subtle text-warning-emphasis"
         : judgeText === "×"
-        ? "bg-danger-subtle text-danger-emphasis"
-        : "bg-secondary-subtle text-secondary-emphasis";
+          ? "bg-danger-subtle text-danger-emphasis"
+          : "bg-secondary-subtle text-secondary-emphasis";
 
     fore.innerHTML = `
   <div class="d-flex">
     <!-- 左側：テキストブロック -->
     <div class="flex-grow-1 pe-3">
       <div class="small text-muted mb-1">
-        ${
+        ${row.カテゴリ値
+        ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(
           row.カテゴリ値
-            ? `<span class="me-2"><i class="bi bi-tags"></i> ${_escapeHtml(
-                row.カテゴリ値
-              )}</span>`
-            : ""
-        }
+        )}</span>`
+        : ""
+      }
       </div>
 
       <div class="fw-semibold text-truncate-2 mb-1">
@@ -1684,35 +1582,32 @@ function renderInspections() {
         </span>
       </div>
 
-      ${
-        row.特記事項値
-          ? `<div class="small text-muted mt-1">
+      ${row.特記事項値
+        ? `<div class="small text-muted mt-1">
                ${_escapeHtml(row.特記事項値)}
              </div>`
-          : ""
+        : ""
       }
 
-      ${
-        !thumbHtml && row.URL値
-          ? `<div class="small mt-2">
+      ${!thumbHtml && row.URL値
+        ? `<div class="small mt-2">
                <a href="${_escapeHtml(row.URL値)}"
                   target="_blank" rel="noopener"
                   class="insp-mobile-link-fallback">
                  資料リンク
                </a>
              </div>`
-          : ""
+        : ""
       }
     </div>
 
     <!-- 右側：サムネイル -->
-    ${
-      thumbHtml
+    ${thumbHtml
         ? `<div class="flex-shrink-0 ms-2 insp-thumb-wrap">
              ${thumbHtml}
            </div>`
         : ""
-    }
+      }
   </div>
 `;
 
@@ -1772,8 +1667,8 @@ async function confirmAndDeleteInspection(id) {
     typeof showDeleteToast === "function"
       ? await showDeleteToast()
       : confirm("このレコードを削除しますか？")
-      ? "delete"
-      : "cancel";
+        ? "delete"
+        : "cancel";
 
   if (action !== "delete") return false;
 
@@ -1858,15 +1753,7 @@ function updateInspectionSortIndicators(column, dir) {
   if (column === "URL値") thUrl.textContent += arrow;
 }
 
-/* --- セクション切替 --- */
-window.showInspectionSection = function () {
-  switchSection("inspectionSection");
-  history.replaceState(null, "", "#inspections");
-  if (!window.__insp_inited) {
-    window.__insp_inited = true;
-    initInspectionPage(); // 初回のみ
-  }
-};
+
 
 async function initInspectionFilters() {
   // 1) 店舗名の選択肢
@@ -1955,20 +1842,6 @@ async function initInspectionFilters() {
   });
 }
 
-function _monthToKey(v) {
-  if (!v) return -1;
-  if (typeof v === "number") v = String(v);
-  if (/^\d{6}$/.test(v)) return Number(v); // yyyymm
-  if (/^\d{4}-\d{1,2}$/.test(v)) {
-    const [y, m] = v.split("-").map(Number);
-    return y * 100 + m;
-  }
-
-  const dt = new Date(v);
-  if (!isNaN(dt)) return dt.getFullYear() * 100 + (dt.getMonth() + 1);
-  return -1;
-}
-
 function initSelectAllOnly(selectEl, allLabel) {
   if (!selectEl) return;
   selectEl.innerHTML = "";
@@ -1979,60 +1852,6 @@ function addOption(selectEl, value, label) {
   o.value = value;
   o.textContent = label;
   selectEl.appendChild(o);
-}
-
-/* ===== 臨店一覧：URL 加工／サムネ生成ユーティリティ ===== */
-
-// カンマ・空白・改行で複数URLに対応
-function _splitUrls(s) {
-  return (s || "")
-    .split(/[\s,、\n\r]+/)
-    .map((u) => u.trim())
-    .filter(Boolean);
-}
-
-// 画像拡張子なら true
-function _isImageUrl(u) {
-  return /\.(png|jpe?g|gif|webp|bmp|svg)(\?.*)?$/i.test(u);
-}
-
-// いろいろな Drive/Docs URLから ID を抽出
-function _extractDriveId(url) {
-  const patterns = [
-    /\/file\/d\/([a-zA-Z0-9_-]{10,})/, // drive.google.com/file/d/ID
-    /\/document\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/document/d/ID
-    /\/spreadsheets\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/spreadsheets/d/ID
-    /\/presentation\/d\/([a-zA-Z0-9_-]{10,})/, // docs.google.com/presentation/d/ID
-    /[?&]id=([a-zA-Z0-9_-]{10,})/, // open?id=ID
-  ];
-  for (const re of patterns) {
-    const m = url.match(re);
-    if (m) return m[1];
-  }
-  return null;
-}
-function _driveThumbUrl(id, size = 240) {
-  // 横幅px指定。表示が小さければ 160 などに変更
-  return `https://drive.google.com/thumbnail?id=${id}&sz=w${size}`;
-}
-
-function _driveDirectViewUrl(id) {
-  // 公開設定に依存。失敗時は次のサムネHDにフォールバック
-  return `https://drive.google.com/uc?export=view&id=${id}`;
-}
-function _driveThumbHdUrl(id) {
-  // 大きめサムネ（多くの場合こちらは表示されやすい）
-  return `https://drive.google.com/thumbnail?id=${id}&sz=w1600`;
-}
-
-// Favicon用
-function _faviconUrl(u) {
-  try {
-    const { hostname } = new URL(u);
-    return `https://www.google.com/s2/favicons?sz=32&domain=${hostname}`;
-  } catch {
-    return "";
-  }
 }
 
 /**
@@ -2078,9 +1897,8 @@ function buildUrlPreviewNode(urls) {
         try {
           const fav = _faviconUrl(u);
           const { hostname } = new URL(u);
-          a.innerHTML = `${
-            fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""
-          } ${_escapeHtml(hostname)}`;
+          a.innerHTML = `${fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""
+            } ${_escapeHtml(hostname)}`;
         } catch {
           a.textContent = "リンク";
         }
@@ -2121,9 +1939,8 @@ function buildUrlPreviewNode(urls) {
       a.target = "_blank";
       a.rel = "noopener";
       a.className = "insp-url-chip btn btn-sm btn-outline-secondary";
-      a.innerHTML = `${
-        fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""
-      } ${_escapeHtml(hostname)}`;
+      a.innerHTML = `${fav ? `<img class="insp-favicon" src="${fav}" alt="">` : ""
+        } ${_escapeHtml(hostname)}`;
       wrap.appendChild(a);
     } catch {
       const a = document.createElement("a");
@@ -2166,8 +1983,8 @@ function _buildMobileThumbHtml(urls) {
        data-candidates='${candAttr}'
        aria-label="画像プレビュー">
       <img src="${_escapeHtml(
-        thumbSrc
-      )}" alt="プレビュー" class="insp-url-thumb">
+    thumbSrc
+  )}" alt="プレビュー" class="insp-url-thumb">
     </a>`;
 }
 
