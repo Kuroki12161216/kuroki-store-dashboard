@@ -1,3 +1,4 @@
+import { updateNotificationBadge } from "./notifications.js";
 /* ========= セクション表示切り替え ========= */
 function closeOffcanvas() {
   const el = document.getElementById("offcanvasNavbar");
