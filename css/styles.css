@@ -1,0 +1,266 @@
+/* ===== 置換できない/挙動系だけ残す ===== */
+
+/* タスク（モバイル用 list-group スワイプの見た目） */
+.lg-swipe-wrap {
+  position: relative;
+  overflow: hidden;
+}
+.lg-swipe-bg {
+  position: absolute;
+  inset: 0;
+  background: #ffe5e5;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 16px;
+  pointer-events: none;
+}
+.lg-swipe-fore {
+  position: relative;
+  transition: transform .15s ease;
+  will-change: transform;
+  background: #fff;
+}
+
+/* 2行省略（Bootstrapは1行まで） */
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ===================== ダッシュボード用（最小） ===================== */
+#dashboardSection { --gap: 16px; --header-h: 56px; }
+
+/* コンテナ */
+#dashboardSection .db-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+  background: #fff;
+}
+
+/* 上段：ヘッダー + KPI（gridは残す） */
+#dashboardSection .top-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-gap: var(--gap);
+  margin-bottom: 24px;
+}
+@media (min-width: 1024px) {
+  #dashboardSection .top-section { grid-template-columns: repeat(5, 1fr); }
+  #dashboardSection .top-section .card:first-child { grid-column: span 3; }
+  #dashboardSection #kpi-sales { grid-column: span 1; }
+  #dashboardSection #kpi-unitprice { grid-column: span 1; }
+}
+
+/* KPI行（gridは残す） */
+#dashboardSection .kpi-row {
+  display: grid;
+  grid-gap: var(--gap);
+}
+@media (min-width:768px) and (max-width:1023.98px) {
+  #dashboardSection .kpi-row { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width:1024px) {
+  #dashboardSection .kpi-row { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* KPIカードの中身（Bootstrapで寄せたが、数値の見た目だけ補助） */
+#dashboardSection .kpi-card { cursor: pointer; }
+#dashboardSection .kpi-value {
+  font-size: clamp(22px, 5.5vw, 28px);
+  font-weight: 700;
+  color: #2b3a67;
+  line-height: 1.2;
+}
+#dashboardSection .kpi-trend { font-size: 12px; margin-top: 8px; }
+
+/* モバイル：全体2カラム化（display:contents を維持） */
+@media (max-width: 767.98px) {
+  #dashboardSection .db-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: var(--gap);
+    padding: 12px;
+  }
+  #dashboardSection .top-section,
+  #dashboardSection .kpi-row.row-2,
+  #dashboardSection .kpi-row.row-3 { display: contents; }
+
+  /* headerカードは全幅に */
+  #dashboardSection .top-section .card:first-child { grid-column: 1/-1; }
+
+  /* ランキング/ツールバー/グラフは全幅に */
+  #dashboardSection .chart-toolbar,
+  #dashboardSection .chart-section,
+  #dashboardSection #score-ranking { grid-column: 1/-1; }
+}
+
+/* chart card の canvas 配置（挙動系なので残す） */
+#dashboardSection .chart-section {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-gap: 24px;
+  margin-bottom: 24px;
+}
+#dashboardSection .chart-card { position: relative; }
+#dashboardSection .chart-card canvas { position: absolute; inset: 16px; }
+@media (max-width:767.98px) {
+  #dashboardSection .chart-card { height: 280px; }
+}
+@media (min-width:768px) {
+  #dashboardSection .chart-card { height: 0; padding-bottom: 56.25%; }
+}
+
+/* ===================== 独自モーダル（現状維持） ===================== */
+#dashboardSection .modal-lite {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, .35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+#dashboardSection .modal-lite[hidden] { display: none; }
+#dashboardSection .modal-lite .content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, .18);
+  padding: 16px;
+  min-width: 320px;
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow-y: auto;
+  position: relative;
+}
+#dashboardSection .modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  background: #fff;
+  margin: -16px -16px 12px -16px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+#dashboardSection .title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: calc(100% - 48px);
+}
+#dashboardSection .title-line.store {
+  font-weight: 700;
+  font-size: 16px;
+  color: #2b3a67;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#dashboardSection .title-line.sub {
+  font-size: 13px;
+  color: #667085;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#dashboardSection .close-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: #f2f4f7;
+  color: #333;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+#dashboardSection .close-btn:hover { background: #e5e7eb; }
+#dashboardSection .form-row { margin-top: 10px; }
+#dashboardSection .form-row label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 4px;
+}
+#dashboardSection .form-row input,
+#dashboardSection .form-row textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: #fafafa;
+}
+#dashboardSection .form-row input:focus,
+#dashboardSection .form-row textarea:focus {
+  outline: none;
+  border-color: #2b3a67;
+  background: #fff;
+}
+#dashboardSection .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding-top: 8px;
+}
+#dashboardSection .btn-lite {
+  padding: 10px 14px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+#dashboardSection .btn-lite.cancel { background: #f2f4f7; }
+#dashboardSection .btn-lite.save { background: #2b3a67; color: #fff; }
+#dashboardSection .hint {
+  font-size: 11px;
+  color: #667085;
+  margin-top: 6px;
+}
+
+/* モバイル：モーダルをフルスクリーンに */
+@media (max-width:767.98px) {
+  #dashboardSection .modal-lite .content {
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    border-radius: 0;
+    padding: 16px;
+  }
+  #dashboardSection .modal-head {
+    border-radius: 0;
+  }
+}
+
+/* 臨店モバイルカード用の補助（残す） */
+.insp-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  background: #f0f3ff;
+  color: #2b3a67;
+}
+.insp-badge-judge-ok { background: #e7f9ef; color: #198754; }
+.insp-badge-judge-ng { background: #fde7ea; color: #dc3545; }
+.insp-line {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.insp-muted { color: #667085; font-size: 12px; }
+.insp-link { text-decoration: none; }
