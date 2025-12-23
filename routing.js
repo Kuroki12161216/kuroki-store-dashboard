@@ -65,10 +65,6 @@ async function showTaskSection() {
 function showInspectionSection() {
   switchSection("inspectionSection");
   history.replaceState(null, "", "#inspections");
-  if (!window.insp_inited) {
-    window.insp_inited = true;
-    initInspectionPage(); // 初回のみ
-  }
 }
 
 function showSettingsSection() {
