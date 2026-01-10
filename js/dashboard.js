@@ -127,9 +127,8 @@ export async function initDashboard() {
   // 店舗一覧
   async function getUniqueStores() {
     const { data, error } = await supabase
-      .from("店舗診断表")
+      .from("店舗診断表_店舗名")
       .select("店舗名")
-      .order("店舗名", { ascending: true });
     if (error) {
       console.error("店舗名取得エラー:", error);
       return [];
