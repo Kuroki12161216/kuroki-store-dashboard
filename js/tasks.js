@@ -343,6 +343,42 @@ export async function fetchAndDisplayTasks(force = false) {
     }
 }
 
+async function getLatestDiagIdOrCreate({ supabase, store, item }) {
+    // 1) 最新（最大の月）の診断表を探す
+    const latest = await supabase
+        .from("店舗診断表")
+        .select("id, 月")
+        .eq("店舗名", store)
+        .eq("項目", item)
+        .order("月", { ascending: false }) // 文字列 YYYYMM でも降順でOK
+        .limit(1);
+
+    if (latest.error) throw latest.error;
+    if (latest.data && latest.data[0]) return latest.data[0].id;
+
+    // 2) 1件も無ければ今月で作成（従来と同等）
+    const month = _currentYYYYMM();
+
+    // upsert して、直後に select で id 取得（確実パターン）
+    const { error: upErr } = await supabase
+        .from("店舗診断表")
+        .upsert([{ 店舗名: store, 月: month, 項目: item }], {
+            onConflict: "店舗名,月,項目",
+        });
+    if (upErr) throw upErr;
+
+    const res = await supabase
+        .from("店舗診断表")
+        .select("id")
+        .eq("店舗名", store)
+        .eq("月", month)
+        .eq("項目", item)
+        .limit(1);
+
+    if (res.error) throw res.error;
+    return res.data?.[0]?.id;
+}
+
 // タスク追加（一覧上部のフォーム）
 export async function addTaskFromList() {
     const store =
@@ -359,39 +395,11 @@ export async function addTaskFromList() {
         return;
     }
 
-    // 現在月の診断表を作成/取得し、その id を使ってタスクを紐付け
-    const month = _currentYYYYMM();
-    const diagId = await (async () => {
-        // 既存を探す
-        let { data, error } = await supabase
-            .from("店舗診断表")
-            .select("id")
-            .eq("店舗名", store)
-            .eq("月", month)
-            .eq("項目", item)
-            .limit(1);
-        if (error) throw error;
-        if (data && data[0]) return data[0].id;
-
-        // 無ければ upsert
-        const { error: upErr } = await supabase
-            .from("店舗診断表")
-            .upsert([{ 店舗名: store, 月: month, 項目: item }], {
-                onConflict: "店舗名,月,項目",
-            });
-        if (upErr) throw upErr;
-
-        // もう一度取得
-        const res = await supabase
-            .from("店舗診断表")
-            .select("id")
-            .eq("店舗名", store)
-            .eq("月", month)
-            .eq("項目", item)
-            .limit(1);
-        if (res.error) throw res.error;
-        return res.data?.[0]?.id;
-    })();
+    const diagId = await getLatestDiagIdOrCreate({
+        supabase,
+        store,
+        item,
+    });
 
     if (!diagId) {
         alert("店舗診断表の作成/取得に失敗しました");
