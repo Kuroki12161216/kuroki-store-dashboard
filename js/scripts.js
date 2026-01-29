@@ -30,6 +30,8 @@ import {
   initInspectionPage
 } from "./inspections.js";
 
+import "./csvImport.js";
+
 /* ===== ダッシュボード：初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initDashboard();
