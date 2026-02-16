@@ -17,6 +17,7 @@ function switchSection(targetId) {
     "dashboardSection",
     "taskSection",
     "inspectionSection",
+    "snsSection",
     "settingsSection",
   ];
   ids.forEach((id) => {
@@ -32,6 +33,7 @@ function switchSection(targetId) {
     dashboardSection: 'button.nav-link[onclick*="showDashboardSection"]',
     taskSection: 'button.nav-link[onclick*="showTaskSection"]',
     inspectionSection: 'button.nav-link[onclick*="showInspectionSection"]',
+    snsSection: 'button.nav-link[onclick*="showSnsSection"]',
     settingsSection: 'button.nav-link[onclick*="showSettingsSection"]',
   };
   document.querySelector(selectorMap[targetId])?.classList.add("active");
@@ -67,6 +69,12 @@ function showInspectionSection() {
   history.replaceState(null, "", "#inspections");
 }
 
+
+function showSnsSection() {
+  switchSection("snsSection");
+  history.replaceState(null, "", "#sns");
+}
+
 function showSettingsSection() {
   switchSection("settingsSection");
   updateNotificationBadge();
@@ -77,6 +85,7 @@ if (typeof window !== "undefined") {
   window.showDashboardSection = showDashboardSection;
   window.showTaskSection = showTaskSection;
   window.showInspectionSection = showInspectionSection;
+  window.showSnsSection = showSnsSection;
   window.showSettingsSection = showSettingsSection;
   window.closeOffcanvas = closeOffcanvas;
 }
@@ -87,5 +96,6 @@ export {
   showDashboardSection,
   showTaskSection,
   showInspectionSection,
+  showSnsSection,
   showSettingsSection,
 };

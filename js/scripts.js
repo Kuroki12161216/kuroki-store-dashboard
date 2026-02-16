@@ -19,6 +19,7 @@ import {
   showDashboardSection,
   showTaskSection,
   showInspectionSection,
+  showSnsSection,
   showSettingsSection,
 } from "./routing.js";
 
@@ -30,9 +31,12 @@ import {
   initInspectionPage
 } from "./inspections.js";
 
+import { initSnsPage } from "./sns.js";
+
 /* ===== ダッシュボード：初期化 ===== */
 window.addEventListener("DOMContentLoaded", async () => {
   await initDashboard();
+  initSnsPage();
   // ハッシュで初期表示を分岐
   const h = (location.hash || "").toLowerCase();
   if (h === "#tasks") {
@@ -41,6 +45,8 @@ window.addEventListener("DOMContentLoaded", async () => {
   } else if (h === "#inspections") {
     showInspectionSection();
     await initInspectionPage();
+  } else if (h === "#sns") {
+    showSnsSection();
   } else if (h === "#settings") {
     showSettingsSection();
   } else {
