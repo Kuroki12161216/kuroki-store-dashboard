@@ -1085,13 +1085,18 @@
               <div class="card-body">
                 <h2 class="h5 mb-3">投稿作成</h2>
                 <div class="row g-3">
-                  <div class="col-md-4">
-                    <label for="snsPlatform" class="form-label">投稿先</label>
-                    <select id="snsPlatform" class="form-select">
-                      <option value="x">X (Twitter)</option>
-                      <option value="line">LINE</option>
-                      <option value="facebook">Facebook</option>
-                    </select>
+                  <div class="col-12">
+                    <label class="form-label mb-2">投稿先</label>
+                    <div class="d-flex flex-wrap gap-3">
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="gbp" id="snsTargetGbp" name="snsTargets" checked>
+                        <label class="form-check-label" for="snsTargetGbp">Googleビジネスプロフィール</label>
+                      </div>
+                      <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="instagram" id="snsTargetInstagram" name="snsTargets" checked>
+                        <label class="form-check-label" for="snsTargetInstagram">Instagram</label>
+                      </div>
+                    </div>
                   </div>
                   <div class="col-md-4">
                     <label for="snsStore" class="form-label">店舗名</label>
@@ -1101,18 +1106,31 @@
                     <label for="snsCampaign" class="form-label">キャンペーン名（任意）</label>
                     <input id="snsCampaign" class="form-control" type="text" placeholder="例: 春の歓送迎会プラン">
                   </div>
+                  <div class="col-md-4">
+                    <label for="snsUrl" class="form-label">リンク（任意）</label>
+                    <input id="snsUrl" class="form-control" type="url" placeholder="https://example.com">
+                  </div>
                   <div class="col-12">
                     <label for="snsBody" class="form-label">本文</label>
                     <textarea id="snsBody" class="form-control" rows="6"
                       placeholder="投稿本文を入力してください"></textarea>
                   </div>
-                  <div class="col-md-8">
+                  <div class="col-12">
                     <label for="snsHashtags" class="form-label">ハッシュタグ（スペース区切り）</label>
                     <input id="snsHashtags" class="form-control" type="text" placeholder="例: #居酒屋 #海鮮 #駅近">
                   </div>
-                  <div class="col-md-4">
-                    <label for="snsUrl" class="form-label">リンク（任意）</label>
-                    <input id="snsUrl" class="form-control" type="url" placeholder="https://example.com">
+                  <div class="col-md-6">
+                    <label for="snsWebhookGbp" class="form-label">GBP 自動投稿Webhook URL</label>
+                    <input id="snsWebhookGbp" class="form-control" type="url" placeholder="https://your-automation.example/gbp">
+                  </div>
+                  <div class="col-md-6">
+                    <label for="snsWebhookInstagram" class="form-label">Instagram 自動投稿Webhook URL</label>
+                    <input id="snsWebhookInstagram" class="form-control" type="url" placeholder="https://your-automation.example/instagram">
+                  </div>
+                  <div class="col-12">
+                    <label for="snsAuthToken" class="form-label">自動投稿用アクセストークン（任意）</label>
+                    <input id="snsAuthToken" class="form-control" type="password" placeholder="Bearerトークンを入力">
+                    <small class="text-muted">※ 実際の投稿実行は、Webhook先（Zapier/Make/n8n/Cloud Functions等）でGoogle Business Profile API・Instagram Graph API連携を行ってください。</small>
                   </div>
                 </div>
 
@@ -1125,12 +1143,13 @@
                 <div class="d-flex flex-wrap gap-2 mt-4">
                   <button id="btnSnsPreview" class="btn btn-outline-primary" type="button">プレビュー更新</button>
                   <button id="btnSnsCopy" class="btn btn-outline-secondary" type="button">テキストをコピー</button>
-                  <button id="btnSnsPost" class="btn btn-primary" type="button">投稿画面を開く</button>
+                  <button id="btnSnsAutoPost" class="btn btn-primary" type="button">Google/Instagramへ自動投稿</button>
                 </div>
 
                 <div class="mt-3">
                   <label class="form-label">プレビュー</label>
                   <div id="snsPreview" class="sns-preview text-muted">投稿内容がここに表示されます。</div>
+                  <div id="snsPostStatus" class="alert alert-info mt-3 mb-0" hidden></div>
                 </div>
               </div>
             </div>
