@@ -456,9 +456,7 @@ export async function initDashboard() {
 
     function asPercentInt(v) {
       if (v == null) return null;
-      const n = Number(v);
-      const pct = Math.abs(n) <= 1 ? n * 100 : n;
-      return Math.round(pct);
+      return Math.round(Number(v) * 100);
     }
     function roundIfNeeded(item, n) {
       return item === "単価" || item === "人時売上高"
