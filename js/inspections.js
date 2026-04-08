@@ -106,8 +106,9 @@ async function initInspectionStoreDropdown() {
     storeSelectInspection.value = storeNames[0];
   }
 
-  storeSelectInspection.addEventListener("change", () => {
+  storeSelectInspection.addEventListener("change", async () => {
     inspFilters.store = storeSelectInspection.value;
+    await updateInspDropdownsByStore(inspFilters.store);
     fetchAndDisplayInspections(true);
   });
 }
@@ -450,19 +451,17 @@ function updateInspectionSortIndicators(column, dir) {
 
 
 
-async function initInspectionFilters() {
-  // 1) 店舗名の選択肢
-  await initInspectionStoreDropdown();
-
-  // 2) 月・カテゴリー・判定の選択肢
+/* --- 選択中の店舗に絞って月・カテゴリー・判定ドロップダウンを更新 --- */
+async function updateInspDropdownsByStore(storeName) {
   const cols = INSPECTION_COLS;
   let selectClause = `${cols.month}, ${cols.category}, ${cols.judge}`;
-  const { data, error } = await supabase
-    .from(INSPECTION_TABLE)
-    .select(selectClause);
+  let query = supabase.from(INSPECTION_TABLE).select(selectClause);
+  if (storeName && cols.store_direct) {
+    query = query.eq(cols.store_direct, storeName);
+  }
+  const { data, error } = await query;
   if (error) {
     console.error("臨店フィルタ候補取得エラー:", error);
-    // 失敗時は最低限の「全件」だけ入れておく
     initSelectAllOnly(inspMonthSelect, "全て");
     initSelectAllOnly(inspCatSelect, "全て");
     initSelectAllOnly(inspJudgeSelect, "全て");
@@ -478,18 +477,18 @@ async function initInspectionFilters() {
         .map((v) => String(v))
     )
   );
-  // ★ yyyymmキーで昇順 → 後ろが最新
   monthsRaw.sort((a, b) => _monthToKey(a) - _monthToKey(b));
   inspMonthSelect.innerHTML = "";
-  // ★ 「全ての月」は作らない
   monthsRaw.forEach((raw) =>
     addOption(inspMonthSelect, raw, normalizeMonth(raw))
   );
-  // ★ 初期値：最新月
+  // 初期値：選択店舗の最新月
   const latestRaw = monthsRaw[monthsRaw.length - 1];
   if (latestRaw) {
-    inspFilters.month = latestRaw; // ← DB生値でフィルタ保持
-    inspMonthSelect.value = latestRaw; // ← UIにも反映
+    inspFilters.month = latestRaw;
+    inspMonthSelect.value = latestRaw;
+  } else {
+    inspFilters.month = "";
   }
 
   // カテゴリー
@@ -504,6 +503,8 @@ async function initInspectionFilters() {
   inspCatSelect.innerHTML = "";
   addOption(inspCatSelect, "all", "全て");
   cats.forEach((c) => addOption(inspCatSelect, c, c));
+  inspFilters.category = "all";
+  inspCatSelect.value = "all";
 
   // 判定
   const judges = Array.from(
@@ -517,12 +518,18 @@ async function initInspectionFilters() {
   inspJudgeSelect.innerHTML = "";
   addOption(inspJudgeSelect, "all", "全て");
   judges.forEach((j) => addOption(inspJudgeSelect, j, j));
+  inspFilters.judge = "all";
+  inspJudgeSelect.value = "all";
+}
+
+async function initInspectionFilters() {
+  // 1) 店舗名の選択肢
+  await initInspectionStoreDropdown();
+
+  // 2) 月・カテゴリー・判定の選択肢（選択中の店舗に絞って取得）
+  await updateInspDropdownsByStore(inspFilters.store);
 
   // 変更イベント
-  // storeSelectInspection?.addEventListener("change", () => {
-  //   inspFilters.store = storeSelectInspection.value || "all";
-  //   fetchAndDisplayInspections(true);
-  // });
   inspMonthSelect?.addEventListener("change", () => {
     inspFilters.month = inspMonthSelect.value;
     fetchAndDisplayInspections(true);
