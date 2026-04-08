@@ -1,4 +1,5 @@
 import { updateNotificationBadge } from "./notifications.js";
+import { initInspectionPage } from "./inspections.js";
 /* ========= セクション表示切り替え ========= */
 function closeOffcanvas() {
   const el = document.getElementById("offcanvasNavbar");
@@ -64,9 +65,14 @@ async function showTaskSection() {
 }
 
 /* --- セクション切替 --- */
+let _inspectionInitialized = false;
 function showInspectionSection() {
   switchSection("inspectionSection");
   history.replaceState(null, "", "#inspections");
+  if (!_inspectionInitialized) {
+    _inspectionInitialized = true;
+    initInspectionPage();
+  }
 }
 
 

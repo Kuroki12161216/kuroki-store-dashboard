@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <title>口コミ・評価ダッシュボード</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-9ndCyUaIbzAi2FUVXJi0CjmCapSmO7SnpJef0486qhLnuZ2cdeRhO02iuK6FUUVM" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-geWF76RCwLtnZ8qwWowPQNguL3RmwHVBC9FhGdlKrxdiJJigb/j/68SIy3Te4Bkz"
+    crossorigin="anonymous"></script>
+
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- 共通スタイル -->
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    /* ===== サイドバー nav-link active 状態 ===== */
+    a.btn-link.nav-link {
+      text-align: left;
+      display: block;
+      padding: 0.5rem 1rem;
+    }
+    .sidebar .nav-link.active-page {
+      background-color: var(--primary-100);
+      color: var(--primary-700);
+      font-weight: 600;
+    }
+
+    /* ===== Platform KPI Cards ===== */
+    .platform-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 1199px) { .platform-grid { grid-template-columns: repeat(2, 1fr) } }
+    @media (max-width: 575px)  { .platform-grid { grid-template-columns: repeat(2, 1fr) } }
+
+    .platform-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      padding: 16px;
+      border-top: 4px solid #ddd;
+    }
+    .platform-card.google   { border-top-color: #4285F4 }
+    .platform-card.tabelog  { border-top-color: #E24B4B }
+    .platform-card.gurunavi { border-top-color: #FF6B00 }
+    .platform-card.other    { border-top-color: #667085 }
+
+    .platform-card .plat-name {
+      font-size: 12px; font-weight: 700; color: #667085;
+      margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+    }
+    .plat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block }
+    .plat-dot.google   { background: #4285F4 }
+    .plat-dot.tabelog  { background: #E24B4B }
+    .plat-dot.gurunavi { background: #FF6B00 }
+    .plat-dot.other    { background: #667085 }
+
+    .platform-card .rating-big { font-size: 30px; font-weight: 700; color: #2b3a67; line-height: 1 }
+    .platform-card .stars { color: #f59e0b; font-size: 13px; margin: 4px 0 }
+    .platform-card .meta { display: flex; gap: 12px; margin-top: 8px }
+    .platform-card .meta-item { font-size: 11px; color: #667085 }
+    .platform-card .meta-item .val { font-size: 14px; font-weight: 700; color: #344054; display: block }
+    .reply-rate-bar { margin-top: 10px }
+    .reply-rate-bar .lbl { display: flex; justify-content: space-between; font-size: 11px; color: #667085; margin-bottom: 3px }
+    .progress { height: 6px; border-radius: 999px; background: #eee }
+    .progress-bar { border-radius: 999px }
+    .pb-google   { background: #4285F4 }
+    .pb-tabelog  { background: #E24B4B }
+    .pb-gurunavi { background: #FF6B00 }
+    .pb-other    { background: #667085 }
+
+    /* ===== Chart Row ===== */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 991px) { .chart-row { grid-template-columns: 1fr } }
+
+    .chart-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      padding: 16px;
+    }
+    .chart-card h5 { font-size: 14px; font-weight: 700; color: #344054; margin-bottom: 12px }
+    .chart-wrap { position: relative; height: 220px }
+
+    .dist-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px }
+    .dist-list li { display: flex; align-items: center; gap: 8px; font-size: 13px }
+    .dist-list li .slabel { width: 20px; color: #667085; flex: 0 0 auto }
+    .dist-list li .bar-wrap { flex: 1; background: #f3f4f6; border-radius: 999px; height: 10px }
+    .dist-list li .bar-fill { height: 10px; border-radius: 999px; background: #f59e0b }
+    .dist-list li .cnt { width: 28px; text-align: right; color: #667085; font-size: 12px }
+
+    /* ===== Filter Bar ===== */
+    .filter-bar {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-bar label { font-size: 12px; color: #667085; display: flex; align-items: center; gap: 4px; margin: 0 }
+    .filter-bar select,
+    .filter-bar input[type="month"] {
+      padding: 7px 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: #fafafa;
+      font-size: 13px;
+      min-height: 36px;
+    }
+    .btn-add-review {
+      margin-left: auto;
+      padding: 7px 16px;
+      background: #2b3a67;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .btn-add-review:hover { background: #1e2d56 }
+    @media (max-width: 575px) { .btn-add-review { margin-left: 0; width: 100% } }
+
+    /* ===== Reviews Panel ===== */
+    .reviews-panel {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      padding: 16px;
+    }
+    .reviews-panel .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .reviews-panel h5 { font-size: 15px; font-weight: 700; color: #344054; margin: 0 }
+
+    .filter-tabs { display: flex; gap: 4px; flex-wrap: wrap }
+    .filter-tab {
+      padding: 4px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #d0d5dd;
+      background: #fff;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .filter-tab.active { background: #2b3a67; color: #fff; border-color: #2b3a67 }
+    .filter-tab:hover:not(.active) { background: #f3f4f6 }
+
+    /* ===== Review Cards ===== */
+    .review-card {
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      transition: box-shadow .15s;
+    }
+    .review-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.08) }
+
+    .rc-head { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px }
+    .plat-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex: 0 0 auto;
+    }
+    .plat-icon.google   { background: #e8f0fe; color: #4285F4 }
+    .plat-icon.tabelog  { background: #fde8e8; color: #E24B4B }
+    .plat-icon.gurunavi { background: #fff0e6; color: #FF6B00 }
+    .plat-icon.other    { background: #f2f4f7; color: #667085 }
+
+    .rc-meta { flex: 1 }
+    .rc-meta .rc-store { font-size: 13px; font-weight: 700; color: #344054 }
+    .rc-meta .rc-date  { font-size: 11px; color: #98a2b3 }
+    .rc-stars { color: #f59e0b; font-size: 13px; margin-left: auto; flex: 0 0 auto }
+
+    .rc-comment { font-size: 13px; color: #344054; line-height: 1.6; margin-bottom: 8px }
+    .rc-comment.empty { color: #98a2b3; font-style: italic }
+
+    .rc-reply {
+      background: #f9fafb;
+      border-left: 3px solid #4285F4;
+      border-radius: 0 8px 8px 0;
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #344054;
+      margin-bottom: 8px;
+    }
+    .rc-reply .reply-label { font-size: 11px; color: #667085; font-weight: 700; margin-bottom: 2px }
+
+    .rc-footer { display: flex; gap: 6px; align-items: center; flex-wrap: wrap }
+    .badge-plat {
+      padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    }
+    .badge-plat.google   { background: #e8f0fe; color: #4285F4 }
+    .badge-plat.tabelog  { background: #fde8e8; color: #E24B4B }
+    .badge-plat.gurunavi { background: #fff0e6; color: #FF6B00 }
+    .badge-plat.other    { background: #f2f4f7; color: #667085 }
+    .badge-replied   { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700 }
+    .badge-unreplied { background: #fef9c3; color: #ca8a04; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700 }
+
+    .rc-btn {
+      padding: 3px 10px;
+      border: 1px solid #d0d5dd;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .rc-btn:hover { background: #f3f4f6 }
+    .rc-btn.done { border-color: #16a34a; color: #16a34a }
+    .rc-btn.edit-btn-sm { border-color: #667085; color: #667085 }
+    .ml-auto { margin-left: auto }
+
+    .empty-state { text-align: center; padding: 40px 16px; color: #98a2b3 }
+    .empty-state i { font-size: 40px; display: block; margin-bottom: 8px }
+
+    /* ===== Modal ===== */
+    .rv-modal { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 1050; padding: 16px }
+    .rv-modal[hidden] { display: none }
+    .rv-modal-box {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 10px 32px rgba(0,0,0,.18);
+      width: 100%; max-width: 520px;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .rv-modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid #eee;
+      position: sticky; top: 0; background: #fff;
+      border-radius: 14px 14px 0 0;
+    }
+    .rv-modal-head h3 { font-size: 16px; font-weight: 700; color: #2b3a67; margin: 0 }
+    .rv-close {
+      width: 32px; height: 32px; border: none;
+      background: #f2f4f7; border-radius: 8px;
+      cursor: pointer; font-size: 18px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .rv-close:hover { background: #e5e7eb }
+    .rv-modal-body { padding: 16px }
+    .rv-form-group { margin-bottom: 14px }
+    .rv-form-group label { display: block; font-size: 12px; font-weight: 600; color: #344054; margin-bottom: 5px }
+    .rv-form-group select,
+    .rv-form-group input,
+    .rv-form-group textarea {
+      width: 100%; padding: 9px 12px;
+      border: 1px solid #d0d5dd; border-radius: 8px;
+      background: #fafafa; font-size: 13px; font-family: inherit;
+    }
+    .rv-form-group select:focus,
+    .rv-form-group input:focus,
+    .rv-form-group textarea:focus { outline: none; border-color: #2b3a67; background: #fff }
+
+    .star-input { display: flex; gap: 6px; font-size: 28px; cursor: pointer; color: #d0d5dd }
+    .star-input span.lit { color: #f59e0b }
+
+    .rv-modal-footer {
+      padding: 12px 16px; border-top: 1px solid #eee;
+      display: flex; justify-content: flex-end; gap: 8px;
+      position: sticky; bottom: 0; background: #fff;
+      border-radius: 0 0 14px 14px;
+    }
+    .rv-btn-cancel { padding: 8px 16px; border: 1px solid #d0d5dd; border-radius: 8px; background: #fff; cursor: pointer; font-size: 13px }
+    .rv-btn-save   { padding: 8px 16px; background: #2b3a67; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600 }
+    .rv-btn-save:hover { background: #1e2d56 }
+    .rv-btn-delete { padding: 8px 16px; background: #fee2e2; color: #dc2626; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; margin-right: auto }
+    .rv-btn-delete:hover { background: #fecaca }
+
+    /* ===== Loading ===== */
+    .rv-loading { position: fixed; inset: 0; background: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; z-index: 9999; font-size: 14px; color: #667085 }
+    .rv-loading[hidden] { display: none }
+
+    @media (max-width: 575px) {
+      .rv-modal-box { max-height: 100vh; border-radius: 0 }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== モバイル：ナビバー + オフキャンバス ===== -->
+<nav class="navbar navbar-light bg-light d-md-none">
+  <div class="container-fluid">
+    <span class="navbar-brand fw-bold" style="font-size:15px">口コミ・評価</span>
+    <button class="navbar-toggler" type="button"
+      data-bs-toggle="offcanvas" data-bs-target="#offcanvasReviews"
+      aria-controls="offcanvasReviews" aria-label="メニュー">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="offcanvas offcanvas-start w-50" tabindex="-1" id="offcanvasReviews">
+      <div class="offcanvas-header">
+        <h5 class="offcanvas-title">店舗管理ツール</h5>
+        <button class="btn-close" data-bs-dismiss="offcanvas" aria-label="閉じる"></button>
+      </div>
+      <div class="offcanvas-body">
+        <ul class="navbar-nav flex-column">
+          <li class="nav-item"><a class="btn btn-link nav-link" href="index.html#dashboard" data-bs-dismiss="offcanvas">ダッシュボード</a></li>
+          <li class="nav-item"><a class="btn btn-link nav-link" href="index.html#tasks" data-bs-dismiss="offcanvas">タスク一覧</a></li>
+          <li class="nav-item"><a class="btn btn-link nav-link" href="index.html#inspections" data-bs-dismiss="offcanvas">臨店一覧</a></li>
+          <li class="nav-item"><a class="btn btn-link nav-link" href="index.html#sns" data-bs-dismiss="offcanvas">SNS投稿</a></li>
+          <li class="nav-item"><a class="btn btn-link nav-link active-page" href="reviews.html" data-bs-dismiss="offcanvas">口コミ・評価</a></li>
+          <li class="nav-item"><a class="btn btn-link nav-link" href="index.html#settings" data-bs-dismiss="offcanvas">設定</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ===== Loading ===== -->
+<div class="rv-loading" id="rvLoading">
+  <div class="spinner-border spinner-border-sm text-secondary me-2" role="status"></div> 読み込み中…
+</div>
+
+<!-- ===== メインレイアウト ===== -->
+<div class="container-fluid">
+  <div class="row">
+
+    <!-- デスクトップ：サイドバー -->
+    <nav class="col-md-2 d-none d-md-block bg-light sidebar">
+      <div class="position-sticky pt-3">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="btn btn-link nav-link" href="index.html">ダッシュボード</a>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-link nav-link" href="index.html#tasks">タスク一覧</a>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-link nav-link" href="index.html#inspections">臨店一覧</a>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-link nav-link" href="index.html#sns">SNS投稿</a>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-link nav-link active-page" href="reviews.html">
+              <i class="bi bi-chat-square-text"></i> 口コミ・評価
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="btn btn-link nav-link" href="index.html#settings">設定</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- メインコンテンツ -->
+    <main class="col-md-10 ms-sm-auto px-md-4">
+      <div class="container mt-3">
+
+        <h1 class="mb-3" style="font-size:22px;font-weight:700;color:#2b3a67">
+          <i class="bi bi-chat-square-text"></i> 口コミ・評価ダッシュボード
+        </h1>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+          <label>
+            店舗：
+            <select id="filterStore">
+              <option value="">すべての店舗</option>
+            </select>
+          </label>
+          <label>
+            媒体：
+            <select id="filterPlatform">
+              <option value="">すべて</option>
+              <option value="google">Google</option>
+              <option value="tabelog">食べログ</option>
+              <option value="gurunavi">ぐるなび</option>
+              <option value="other">その他</option>
+            </select>
+          </label>
+          <label>
+            開始：
+            <input type="month" id="filterFrom">
+          </label>
+          <label>
+            終了：
+            <input type="month" id="filterTo">
+          </label>
+          <button class="btn-add-review" id="btnAddReview">
+            <i class="bi bi-plus-lg"></i> 口コミ追加
+          </button>
+        </div>
+
+        <!-- Platform KPI Cards -->
+        <div class="platform-grid" id="platformGrid"></div>
+
+        <!-- Charts Row -->
+        <div class="chart-row">
+          <div class="chart-card">
+            <h5><i class="bi bi-graph-up" style="color:#4285F4"></i>&nbsp; 月別 平均評価推移</h5>
+            <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h5><i class="bi bi-bar-chart-fill" style="color:#f59e0b"></i>&nbsp; 評価分布（全媒体）</h5>
+            <ul class="dist-list" id="distList"></ul>
+          </div>
+        </div>
+
+        <!-- Reviews List -->
+        <div class="reviews-panel">
+          <div class="panel-head">
+            <h5>口コミ一覧 <span id="reviewCount" style="font-size:13px;color:#98a2b3;font-weight:400"></span></h5>
+            <div class="filter-tabs" id="filterTabs">
+              <button class="filter-tab active" data-tab="all">すべて</button>
+              <button class="filter-tab" data-tab="unreplied">未返信</button>
+              <button class="filter-tab" data-tab="replied">返信済</button>
+            </div>
+          </div>
+          <div id="reviewsList"></div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+</div>
+
+<!-- ===== 口コミ追加／編集 モーダル ===== -->
+<div class="rv-modal" id="addModal" hidden>
+  <div class="rv-modal-box">
+    <div class="rv-modal-head">
+      <h3 id="modalTitle">口コミを追加</h3>
+      <button class="rv-close" id="modalClose">×</button>
+    </div>
+    <div class="rv-modal-body">
+      <input type="hidden" id="editId">
+      <div class="rv-form-group">
+        <label>媒体 <span style="color:#e12d39">*</span></label>
+        <select id="fieldPlatform">
+          <option value="google">Google マイビジネス</option>
+          <option value="tabelog">食べログ</option>
+          <option value="gurunavi">ぐるなび</option>
+          <option value="other">その他グルメ媒体</option>
+        </select>
+      </div>
+      <div class="rv-form-group">
+        <label>店舗名 <span style="color:#e12d39">*</span></label>
+        <input type="text" id="fieldStore" placeholder="例）マグロと炉端成る">
+      </div>
+      <div class="rv-form-group">
+        <label>投稿日</label>
+        <input type="date" id="fieldDate">
+      </div>
+      <div class="rv-form-group">
+        <label>評価（星）</label>
+        <div class="star-input" id="starInput">
+          <span data-v="1">★</span>
+          <span data-v="2">★</span>
+          <span data-v="3">★</span>
+          <span data-v="4">★</span>
+          <span data-v="5">★</span>
+        </div>
+        <input type="hidden" id="fieldRating" value="0">
+      </div>
+      <div class="rv-form-group">
+        <label>コメント（投稿者）</label>
+        <textarea id="fieldComment" rows="4" placeholder="口コミ本文を入力"></textarea>
+      </div>
+      <div class="rv-form-group">
+        <label>返信内容</label>
+        <textarea id="fieldReply" rows="3" placeholder="店舗からの返信を入力（任意）"></textarea>
+      </div>
+      <div class="rv-form-group">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400">
+          <input type="checkbox" id="fieldReplied"> 返信済みとしてマーク
+        </label>
+      </div>
+      <div class="rv-form-group">
+        <label>媒体URL（任意）</label>
+        <input type="url" id="fieldUrl" placeholder="https://...">
+      </div>
+    </div>
+    <div class="rv-modal-footer">
+      <button class="rv-btn-delete" id="btnDelete" hidden>削除</button>
+      <button class="rv-btn-cancel" id="btnCancel">キャンセル</button>
+      <button class="rv-btn-save" id="btnSave">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 返信 モーダル ===== -->
+<div class="rv-modal" id="replyModal" hidden>
+  <div class="rv-modal-box" style="max-width:480px">
+    <div class="rv-modal-head">
+      <h3>返信を記録</h3>
+      <button class="rv-close" id="replyModalClose">×</button>
+    </div>
+    <div class="rv-modal-body">
+      <input type="hidden" id="replyTargetId">
+      <div id="replyOrigComment" style="background:#f9fafb;border-radius:8px;padding:10px;font-size:13px;color:#344054;margin-bottom:12px;line-height:1.6"></div>
+      <div class="rv-form-group">
+        <label>返信内容</label>
+        <textarea id="replyText" rows="5" placeholder="返信文を入力してください"></textarea>
+      </div>
+      <div class="rv-form-group">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:400">
+          <input type="checkbox" id="replyMarkDone" checked> 返信済みとしてマーク
+        </label>
+      </div>
+    </div>
+    <div class="rv-modal-footer">
+      <button class="rv-btn-cancel" id="replyCancel">キャンセル</button>
+      <button class="rv-btn-save" id="replySave">保存</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/reviews.js"></script>
+</body>
+</html>

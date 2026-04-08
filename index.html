@@ -678,6 +678,89 @@
     .sns-template-chip {
       cursor: pointer;
     }
+
+    #snsSetupBanner pre,
+    #agentMigrationBanner pre {
+      font-size: .78rem;
+    }
+
+    #snsAiResult .card-body pre {
+      font-family: inherit;
+      font-size: .875rem;
+      white-space: pre-wrap;
+    }
+
+    /* ===== AIエージェントチャット ===== */
+    #agentChatLog {
+      height: 420px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 16px;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: .5rem;
+    }
+
+    .agent-msg {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      max-width: 90%;
+    }
+
+    .agent-msg-bot,
+    .agent-msg-action,
+    .agent-msg-error {
+      align-self: flex-start;
+    }
+
+    .agent-msg-user {
+      align-self: flex-end;
+      flex-direction: row-reverse;
+    }
+
+    .agent-msg-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .agent-msg-body {
+      padding: .5rem .75rem;
+      border-radius: .75rem;
+      font-size: .9rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+
+    .agent-msg-bot .agent-msg-body {
+      background: #fff;
+      border: 1px solid #dee2e6;
+    }
+
+    .agent-msg-user .agent-msg-body {
+      background: #0d6efd;
+      color: #fff;
+    }
+
+    .agent-msg-action .agent-msg-body {
+      background: #d1e7dd;
+      border: 1px solid #a3cfbb;
+      font-family: inherit;
+    }
+
+    .agent-msg-error .agent-msg-body {
+      background: #f8d7da;
+      border: 1px solid #f1aeb5;
+      color: #842029;
+    }
+
+    .agent-msg-temp .agent-msg-body {
+      color: #6c757d;
+      font-style: italic;
+    }
   </style>
 </head>
 
@@ -705,6 +788,7 @@
                 onclick="showInspectionSection(); closeOffcanvas();">臨店一覧</button></li>
             <li class="nav-item"><button class="btn btn-link nav-link"
                 onclick="showSnsSection(); closeOffcanvas();">SNS投稿</button></li>
+            <li class="nav-item"><a class="btn btn-link nav-link" href="reviews.html">口コミ・評価</a></li>
             <li class="nav-item"><button class="btn btn-link nav-link"
                 onclick="showSettingsSection(); closeOffcanvas();">設定</button></li>
           </ul>
@@ -725,6 +809,7 @@
             <li class="nav-item"><button class="btn btn-link nav-link" onclick="showInspectionSection()">臨店一覧</button>
             </li>
             <li class="nav-item"><button class="btn btn-link nav-link" onclick="showSnsSection()">SNS投稿</button></li>
+            <li class="nav-item"><a class="btn btn-link nav-link" href="reviews.html">口コミ・評価</a></li>
             <li class="nav-item"><button class="btn btn-link nav-link" onclick="showSettingsSection()">設定</button></li>
           </ul>
         </div>
@@ -1081,78 +1166,340 @@
           <!-- SNS投稿 -->
           <section id="snsSection" style="display:none;">
             <h1 class="mb-3">SNS投稿</h1>
-            <div class="card sns-card">
-              <div class="card-body">
-                <h2 class="h5 mb-3">投稿作成</h2>
-                <div class="row g-3">
-                  <div class="col-12">
-                    <label class="form-label mb-2">投稿先</label>
-                    <div class="d-flex flex-wrap gap-3">
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="gbp" id="snsTargetGbp" name="snsTargets" checked>
-                        <label class="form-check-label" for="snsTargetGbp">Googleビジネスプロフィール</label>
-                      </div>
-                      <div class="form-check">
-                        <input class="form-check-input" type="checkbox" value="instagram" id="snsTargetInstagram" name="snsTargets" checked>
-                        <label class="form-check-label" for="snsTargetInstagram">Instagram</label>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <label for="snsStore" class="form-label">店舗名</label>
-                    <input id="snsStore" class="form-control" type="text" placeholder="例: マグロと炉端成る" value="マグロと炉端成る">
-                  </div>
-                  <div class="col-md-4">
-                    <label for="snsCampaign" class="form-label">キャンペーン名（任意）</label>
-                    <input id="snsCampaign" class="form-control" type="text" placeholder="例: 春の歓送迎会プラン">
-                  </div>
-                  <div class="col-md-4">
-                    <label for="snsUrl" class="form-label">リンク（任意）</label>
-                    <input id="snsUrl" class="form-control" type="url" placeholder="https://example.com">
-                  </div>
-                  <div class="col-12">
-                    <label for="snsBody" class="form-label">本文</label>
-                    <textarea id="snsBody" class="form-control" rows="6"
-                      placeholder="投稿本文を入力してください"></textarea>
-                  </div>
-                  <div class="col-12">
-                    <label for="snsHashtags" class="form-label">ハッシュタグ（スペース区切り）</label>
-                    <input id="snsHashtags" class="form-control" type="text" placeholder="例: #居酒屋 #海鮮 #駅近">
-                  </div>
-                  <div class="col-md-6">
-                    <label for="snsWebhookGbp" class="form-label">GBP 自動投稿Webhook URL</label>
-                    <input id="snsWebhookGbp" class="form-control" type="url" placeholder="https://your-automation.example/gbp">
-                  </div>
-                  <div class="col-md-6">
-                    <label for="snsWebhookInstagram" class="form-label">Instagram 自動投稿Webhook URL</label>
-                    <input id="snsWebhookInstagram" class="form-control" type="url" placeholder="https://your-automation.example/instagram">
-                  </div>
-                  <div class="col-12">
-                    <label for="snsAuthToken" class="form-label">自動投稿用アクセストークン（任意）</label>
-                    <input id="snsAuthToken" class="form-control" type="password" placeholder="Bearerトークンを入力">
-                    <small class="text-muted">※ 実際の投稿実行は、Webhook先（Zapier/Make/n8n/Cloud Functions等）でGoogle Business Profile API・Instagram Graph API連携を行ってください。</small>
-                  </div>
-                </div>
 
-                <div class="mt-3">
-                  <span class="badge text-bg-light sns-template-chip" data-template="today">本日のおすすめ</span>
-                  <span class="badge text-bg-light sns-template-chip" data-template="event">イベント告知</span>
-                  <span class="badge text-bg-light sns-template-chip" data-template="recruit">採用告知</span>
-                </div>
-
-                <div class="d-flex flex-wrap gap-2 mt-4">
-                  <button id="btnSnsPreview" class="btn btn-outline-primary" type="button">プレビュー更新</button>
-                  <button id="btnSnsCopy" class="btn btn-outline-secondary" type="button">テキストをコピー</button>
-                  <button id="btnSnsAutoPost" class="btn btn-primary" type="button">Google/Instagramへ自動投稿</button>
-                </div>
-
-                <div class="mt-3">
-                  <label class="form-label">プレビュー</label>
-                  <div id="snsPreview" class="sns-preview text-muted">投稿内容がここに表示されます。</div>
-                  <div id="snsPostStatus" class="alert alert-info mt-3 mb-0" hidden></div>
+            <!-- 初回セットアップバナー -->
+            <div id="snsSetupBanner" class="alert alert-warning mb-4" hidden>
+              <div class="d-flex align-items-start gap-3">
+                <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0 mt-1"></i>
+                <div class="flex-grow-1">
+                  <strong>初回セットアップが必要です</strong>
+                  <p class="mb-2 mt-1">SupabaseにSNS用テーブルが未作成です。下記のSQLをSupabase SQL Editorで実行してください。</p>
+                  <pre id="snsSetupSql" class="bg-dark text-light p-3 rounded" style="max-height:200px;overflow:auto;white-space:pre-wrap;"></pre>
+                  <div class="d-flex flex-wrap gap-2 mt-2">
+                    <button id="btnCopySetupSql" class="btn btn-sm btn-outline-secondary">SQLをコピー</button>
+                    <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Supabase SQL Editorを開く</a>
+                    <button id="btnSetupDone" class="btn btn-sm btn-success">セットアップ完了（再チェック）</button>
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- タブナビ -->
+            <ul class="nav nav-tabs mb-4">
+              <li class="nav-item">
+                <button id="snsTabPost" class="nav-link active" data-sns-tab="post">
+                  <i class="bi bi-pencil-square me-1"></i>投稿作成
+                </button>
+              </li>
+              <li class="nav-item">
+                <button id="snsTabStores" class="nav-link" data-sns-tab="stores">
+                  <i class="bi bi-shop me-1"></i>店舗設定
+                </button>
+              </li>
+              <li class="nav-item">
+                <button id="snsTabHistory" class="nav-link" data-sns-tab="history">
+                  <i class="bi bi-clock-history me-1"></i>投稿履歴
+                </button>
+              </li>
+              <li class="nav-item">
+                <button id="snsTabAgent" class="nav-link" data-sns-tab="agent">
+                  <i class="bi bi-robot me-1"></i>AIエージェント
+                </button>
+              </li>
+            </ul>
+
+            <!-- ===== 投稿作成タブ ===== -->
+            <div id="snsTabContentPost">
+              <div class="card sns-card">
+                <div class="card-body">
+
+                  <!-- 店舗選択 + 投稿先 -->
+                  <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                      <label for="snsStoreSelect" class="form-label fw-semibold">投稿店舗</label>
+                      <select id="snsStoreSelect" class="form-select">
+                        <option value="">-- 店舗を選択 --</option>
+                      </select>
+                      <div id="snsStoreSetupHint" class="form-text text-warning" hidden>
+                        <i class="bi bi-info-circle me-1"></i>「店舗設定」タブで店舗を登録してください。
+                      </div>
+                    </div>
+                    <div class="col-md-7">
+                      <label class="form-label fw-semibold">投稿先</label>
+                      <div class="d-flex flex-wrap gap-3 mt-1">
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="gbp" id="snsTargetGbp" name="snsTargets" checked>
+                          <label class="form-check-label" for="snsTargetGbp">
+                            <i class="bi bi-geo-alt-fill text-success me-1"></i>Googleビジネスプロフィール
+                          </label>
+                        </div>
+                        <div class="form-check">
+                          <input class="form-check-input" type="checkbox" value="instagram" id="snsTargetInstagram" name="snsTargets" checked>
+                          <label class="form-check-label" for="snsTargetInstagram">
+                            <i class="bi bi-instagram text-danger me-1"></i>Instagram
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr class="my-3">
+
+                  <!-- AI投稿案生成 -->
+                  <div class="mb-3">
+                    <h2 class="h6 fw-bold mb-3">
+                      <i class="bi bi-stars me-1 text-warning"></i>AI投稿案生成
+                    </h2>
+                    <div class="row g-2 mb-2">
+                      <div class="col-md-5">
+                        <input id="snsAiTheme" class="form-control form-control-sm" type="text"
+                          placeholder="投稿テーマ（例：本日のランチ、週末イベント）">
+                      </div>
+                      <div class="col-md-5">
+                        <input id="snsAiKeywords" class="form-control form-control-sm" type="text"
+                          placeholder="キーワード・補足（例：海鮮丼、1000円、数量限定）">
+                      </div>
+                      <div class="col-md-2">
+                        <button id="btnGenerateAi" class="btn btn-warning btn-sm w-100">
+                          <span id="aiSpinner" class="spinner-border spinner-border-sm me-1" hidden></span>
+                          案を生成
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- AI生成結果 -->
+                    <div id="snsAiResult" hidden>
+                      <div class="row g-2 mt-1">
+                        <div class="col-md-6">
+                          <div class="card border-success h-100">
+                            <div class="card-header bg-success bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
+                              <span class="small fw-semibold">
+                                <i class="bi bi-geo-alt-fill text-success me-1"></i>GBP向け案
+                              </span>
+                              <button id="btnApplyGbp" class="btn btn-outline-success btn-sm py-0 px-2">この案を使う</button>
+                            </div>
+                            <div class="card-body py-2">
+                              <pre id="aiDraftGbp" class="mb-0"></pre>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="card border-primary h-100">
+                            <div class="card-header bg-primary bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
+                              <span class="small fw-semibold">
+                                <i class="bi bi-instagram text-danger me-1"></i>Instagram向け案
+                              </span>
+                              <button id="btnApplyIg" class="btn btn-outline-primary btn-sm py-0 px-2">この案を使う</button>
+                            </div>
+                            <div class="card-body py-2">
+                              <pre id="aiDraftIg" class="mb-0"></pre>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <hr class="my-3">
+
+                  <!-- 投稿内容 -->
+                  <h2 class="h6 fw-bold mb-3"><i class="bi bi-pencil me-1"></i>投稿内容</h2>
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label for="snsCampaign" class="form-label">キャンペーン名（任意）</label>
+                      <input id="snsCampaign" class="form-control" type="text" placeholder="例: 春の歓送迎会プラン">
+                    </div>
+                    <div class="col-md-6">
+                      <label for="snsUrl" class="form-label">リンク（任意）</label>
+                      <input id="snsUrl" class="form-control" type="url" placeholder="https://example.com">
+                    </div>
+                    <div class="col-12">
+                      <label for="snsBody" class="form-label">本文</label>
+                      <textarea id="snsBody" class="form-control" rows="6" placeholder="投稿本文を入力してください"></textarea>
+                    </div>
+                    <div class="col-12">
+                      <label for="snsHashtags" class="form-label">ハッシュタグ（スペース区切り）</label>
+                      <input id="snsHashtags" class="form-control" type="text" placeholder="例: #居酒屋 #海鮮 #駅近">
+                    </div>
+                  </div>
+
+                  <!-- テンプレートチップ -->
+                  <div class="mt-3">
+                    <span class="text-muted small me-2">テンプレート:</span>
+                    <span class="badge text-bg-light sns-template-chip" data-template="today" role="button">本日のおすすめ</span>
+                    <span class="badge text-bg-light sns-template-chip ms-1" data-template="event" role="button">イベント告知</span>
+                    <span class="badge text-bg-light sns-template-chip ms-1" data-template="recruit" role="button">採用告知</span>
+                  </div>
+
+                  <!-- ボタン -->
+                  <div class="d-flex flex-wrap gap-2 mt-4">
+                    <button id="btnSnsPreview" class="btn btn-outline-primary" type="button">プレビュー更新</button>
+                    <button id="btnSnsCopy" class="btn btn-outline-secondary" type="button">テキストをコピー</button>
+                    <button id="btnSnsAutoPost" class="btn btn-primary" type="button">
+                      <i class="bi bi-send-fill me-1"></i>Google/Instagramへ同時投稿
+                    </button>
+                  </div>
+
+                  <!-- プレビュー -->
+                  <div class="mt-4">
+                    <label class="form-label fw-semibold">プレビュー</label>
+                    <div id="snsPreview" class="sns-preview text-muted">投稿内容がここに表示されます。</div>
+                    <div id="snsPostStatus" class="alert mt-3 mb-0" hidden></div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== 店舗設定タブ ===== -->
+            <div id="snsTabContentStores" hidden>
+              <div class="card sns-card mb-3">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0">店舗別SNS設定</h2>
+                    <button id="btnAddStore" class="btn btn-primary btn-sm">
+                      <i class="bi bi-plus-lg me-1"></i>店舗を追加
+                    </button>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>店舗名</th>
+                          <th>GBP Webhook</th>
+                          <th>Instagram Webhook</th>
+                          <th style="width:90px;"></th>
+                        </tr>
+                      </thead>
+                      <tbody id="storesTableBody">
+                        <tr><td colspan="4" class="text-center text-muted py-3">読み込み中...</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- AI設定 -->
+              <div class="card sns-card">
+                <div class="card-body">
+                  <h2 class="h5 mb-3">
+                    <i class="bi bi-stars me-1 text-warning"></i>AI設定（Claude API）
+                  </h2>
+                  <div class="row g-3 align-items-end">
+                    <div class="col-md-8">
+                      <label for="snsAiApiKey" class="form-label">Anthropic APIキー</label>
+                      <input id="snsAiApiKey" class="form-control" type="password" placeholder="sk-ant-api...">
+                      <div id="snsApiKeyFeedback" class="form-text"></div>
+                    </div>
+                    <div class="col-md-4">
+                      <button id="btnSnsApiKeySave" class="btn btn-outline-secondary w-100">保存</button>
+                    </div>
+                  </div>
+                  <small class="text-muted mt-2 d-block">
+                    APIキーはブラウザのlocalStorageに保存されます。
+                    <a href="https://console.anthropic.com/account/keys" target="_blank" rel="noopener">Anthropic Console</a> で取得できます。
+                  </small>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== 投稿履歴タブ ===== -->
+            <div id="snsTabContentHistory" hidden>
+              <div class="card sns-card">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0">投稿履歴（直近50件）</h2>
+                    <button id="btnRefreshHistory" class="btn btn-outline-secondary btn-sm">
+                      <i class="bi bi-arrow-clockwise me-1"></i>更新
+                    </button>
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                      <thead class="table-light">
+                        <tr>
+                          <th>店舗</th>
+                          <th>投稿先</th>
+                          <th>投稿内容</th>
+                          <th class="text-nowrap">投稿日時</th>
+                          <th>結果</th>
+                        </tr>
+                      </thead>
+                      <tbody id="snsHistoryTableBody">
+                        <tr><td colspan="5" class="text-center text-muted py-3">投稿履歴がありません。</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- ===== AIエージェントタブ ===== -->
+            <div id="snsTabContentAgent" hidden>
+
+              <!-- マイグレーションバナー（AIエージェント用列が未追加の場合） -->
+              <div id="agentMigrationBanner" class="alert alert-info mb-4" hidden>
+                <div class="d-flex align-items-start gap-3">
+                  <i class="bi bi-info-circle-fill fs-4 flex-shrink-0 mt-1"></i>
+                  <div class="flex-grow-1">
+                    <strong>データベースの更新が必要です</strong>
+                    <p class="mb-2 mt-1">AIエージェント用の列をテーブルに追加する必要があります。下記のSQLをSupabase SQL Editorで実行してください。</p>
+                    <pre id="agentMigrationSql" class="bg-dark text-light p-3 rounded" style="max-height:160px;overflow:auto;white-space:pre-wrap;"></pre>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                      <button id="btnCopyAgentSql" class="btn btn-sm btn-outline-secondary">SQLをコピー</button>
+                      <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">Supabase SQL Editorを開く</a>
+                      <button id="btnAgentMigrationDone" class="btn btn-sm btn-success">更新完了（再チェック）</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card sns-card">
+                <div class="card-body">
+                  <h2 class="h5 mb-1">
+                    <i class="bi bi-robot me-2 text-primary"></i>AIエージェント投稿
+                  </h2>
+                  <p class="text-muted small mb-3">
+                    自然な言葉で指示するだけで、AIがGBP・Instagram向けの投稿文を生成して自動投稿します。
+                  </p>
+
+                  <!-- 店舗選択 -->
+                  <div class="mb-3" style="max-width:320px;">
+                    <label for="agentStoreSelect" class="form-label fw-semibold">投稿店舗</label>
+                    <select id="agentStoreSelect" class="form-select">
+                      <option value="">-- 店舗を選択 --</option>
+                    </select>
+                  </div>
+
+                  <!-- チャットログ -->
+                  <div id="agentChatLog" class="mb-3"></div>
+
+                  <!-- 入力フォーム -->
+                  <form id="agentForm">
+                    <div class="mb-2">
+                      <input id="agentImageUrl" class="form-control form-control-sm" type="url"
+                        placeholder="🖼 画像URL（Instagram投稿に必要な場合のみ）">
+                    </div>
+                    <div class="d-flex gap-2">
+                      <input id="agentInstruction" class="form-control" type="text"
+                        placeholder="例：今日の牡蠣フライをGBPとInstagram両方に投稿して" required>
+                      <button id="agentSubmitBtn" type="submit" class="btn btn-primary flex-shrink-0">
+                        <span id="agentSpinner" class="spinner-border spinner-border-sm me-1" hidden></span>
+                        <i class="bi bi-send-fill"></i>
+                      </button>
+                    </div>
+                  </form>
+
+                  <div class="mt-3 p-3 bg-light rounded small text-muted">
+                    <strong>指示の例：</strong><br>
+                    ・「今日の牡蠣フライのおすすめをGBPとInstagramに投稿して」<br>
+                    ・「週末のランチイベントをGBPだけに告知して」<br>
+                    ・「採用情報をInstagramに投稿して」（画像URLが必要）<br>
+                    <span class="text-warning">※ 事前に「店舗設定」タブのAIエージェント設定で各APIトークンを入力してください。</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </section>
 
 
@@ -1181,6 +1528,84 @@
 
         </div>
       </main>
+    </div>
+  </div>
+
+  <!-- 店舗設定モーダル -->
+  <div class="modal fade" id="snsStoreModal" tabindex="-1" aria-labelledby="snsStoreModalTitle" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="snsStoreModalTitle">店舗を追加</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="snsStoreForm">
+          <div class="modal-body">
+            <input type="hidden" id="snsStoreModalId">
+            <div class="mb-3">
+              <label for="snsStoreModalName" class="form-label">店舗名 <span class="text-danger">*</span></label>
+              <input id="snsStoreModalName" class="form-control" type="text" required placeholder="例: マグロと炉端成る">
+            </div>
+            <div class="mb-3">
+              <label for="snsStoreModalGbp" class="form-label">GBP Webhook URL</label>
+              <input id="snsStoreModalGbp" class="form-control" type="url" placeholder="https://your-automation.example/gbp">
+              <small class="text-muted">Zapier / Make / n8n 等のGBP連携Webhook URL</small>
+            </div>
+            <div class="mb-3">
+              <label for="snsStoreModalIg" class="form-label">Instagram Webhook URL</label>
+              <input id="snsStoreModalIg" class="form-control" type="url" placeholder="https://your-automation.example/instagram">
+              <small class="text-muted">Zapier / Make / n8n 等のInstagram連携Webhook URL</small>
+            </div>
+            <div class="mb-3">
+              <label for="snsStoreModalToken" class="form-label">アクセストークン（任意）</label>
+              <input id="snsStoreModalToken" class="form-control" type="password" placeholder="Bearer トークン">
+            </div>
+            <!-- AIエージェント設定（折りたたみ） -->
+            <div class="accordion accordion-flush mb-2" id="agentSettingsAccordion">
+              <div class="accordion-item border rounded">
+                <h2 class="accordion-header">
+                  <button class="accordion-button collapsed py-2 px-3 rounded" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#agentSettingsCollapse">
+                    <i class="bi bi-robot me-2 text-primary"></i>
+                    <span class="small fw-semibold">AIエージェント設定（直接API連携）</span>
+                  </button>
+                </h2>
+                <div id="agentSettingsCollapse" class="accordion-collapse collapse">
+                  <div class="accordion-body pt-2 pb-3">
+                    <p class="text-muted small mb-3">AIエージェントタブから直接投稿する場合に設定します。Webhook投稿のみの場合は不要です。</p>
+                    <div class="mb-3">
+                      <label class="form-label small fw-semibold text-success">
+                        <i class="bi bi-geo-alt-fill me-1"></i>Googleビジネスプロフィール
+                      </label>
+                      <input id="snsStoreModalGbpToken" class="form-control form-control-sm mb-2" type="password"
+                        placeholder="GBP アクセストークン（OAuth 2.0）">
+                      <input id="snsStoreModalGbpAccountId" class="form-control form-control-sm mb-2" type="text"
+                        placeholder="アカウントID（例: accounts/123456789）">
+                      <input id="snsStoreModalGbpLocationId" class="form-control form-control-sm" type="text"
+                        placeholder="ロケーションID（例: locations/987654321）">
+                    </div>
+                    <div class="mb-1">
+                      <label class="form-label small fw-semibold text-danger">
+                        <i class="bi bi-instagram me-1"></i>Instagram
+                      </label>
+                      <input id="snsStoreModalIgToken" class="form-control form-control-sm mb-2" type="password"
+                        placeholder="Instagram アクセストークン（長期トークン）">
+                      <input id="snsStoreModalIgAccountId" class="form-control form-control-sm" type="text"
+                        placeholder="Instagram ビジネスアカウントID">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="snsStoreModalErr" class="text-danger small"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+            <button id="btnSnsStoreSave" type="submit" class="btn btn-primary">保存</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 

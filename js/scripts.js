@@ -27,9 +27,6 @@ import {
   fetchAndDisplayTasks,
 } from "./tasks.js";
 
-import {
-  initInspectionPage
-} from "./inspections.js";
 
 import { initSnsPage } from "./sns.js";
 
@@ -44,7 +41,6 @@ window.addEventListener("DOMContentLoaded", async () => {
     await fetchAndDisplayTasks();
   } else if (h === "#inspections") {
     showInspectionSection();
-    await initInspectionPage();
   } else if (h === "#sns") {
     showSnsSection();
   } else if (h === "#settings") {

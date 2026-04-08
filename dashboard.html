@@ -14,7 +14,10 @@
 
     /* ===== Header ===== */
     header { background: #2b3a67; color: #fff }
-    header a { color: #fff; display: block; padding: 12px 24px; font-size: 20px; font-weight: 700 }
+    header .hd-inner { max-width:1200px; margin:0 auto; padding:0 24px; display:flex; align-items:center; justify-content:space-between; height:56px }
+    header a.hd-title { color: #fff; font-size: 20px; font-weight: 700 }
+    header a.hd-nav { color: #aec0f5; font-size: 13px; display:flex; align-items:center; gap:5px; padding:6px 12px; border:1px solid #4a5e9a; border-radius:8px; transition:background .15s }
+    header a.hd-nav:hover { background: #3a4f8a }
 
     /* ===== Top section ===== */
     .top-section { display: grid; grid-template-columns: 1fr; grid-gap: var(--gap); margin-bottom: 24px }
@@ -107,7 +110,12 @@
   </style>
 </head>
 <body>
-  <header><a href="index.html">店舗診断表</a></header>
+  <header>
+    <div class="hd-inner">
+      <a class="hd-title" href="index.html">店舗診断表</a>
+      <a class="hd-nav" href="reviews.html">&#x1F4AC; 口コミ・評価</a>
+    </div>
+  </header>
 
   <div class="container">
     <!-- 上段：ヘッダー + KPI -->
